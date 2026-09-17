@@ -581,14 +581,34 @@ async function importFile(file){
     return;
   }
 
+  // Se o arquivo anexado for um recorte sem a aba de hierarquia (ex.: só
+  // BASE BI HE BH + LISTAS), as colunas GA/GO viram fórmula quebrada e
+  // chegam como texto tipo "NAO ENCONTRADO" / "GO NAO MAPEADO" -- em vez de
+  // aceitar isso, resolve GA pelo nome usando a hierarquia já cadastrada.
+  function isBadLookup(v){
+    if (!v) return true;
+    const n = normalizeHeader(v);
+    return n.includes('nao encontrado') || n.includes('nao mapeado') || n.includes('nao identificado');
+  }
+  const NOME_TO_GA = {};
+  ROSTER.forEach(r => { if (r.nome && r.ga) NOME_TO_GA[r.nome] = r.ga; });
+
+  let gaResolvidosPeloRoster = 0;
   const newRecords = rows
     .filter(r => strOrNull(r[H.funcid]) !== null)
     .map(r => {
-      const ga = strOrNull(r[H.ga]);
+      const nome = strOrNull(r[H.nome]);
+      let ga = strOrNull(r[H.ga]);
+      if (isBadLookup(ga)){
+        const fallbackGa = NOME_TO_GA[nome];
+        if (fallbackGa){ ga = fallbackGa; gaResolvidosPeloRoster++; }
+      }
+      let go = GOMAP[ga] || strOrNull(r[H.go]);
+      if (isBadLookup(go)) go = GOMAP[ga] || null;
       return {
         data: toISODate(r[H.data]),
         funcid: strOrNull(r[H.funcid]),
-        nome: strOrNull(r[H.nome]),
+        nome,
         funcao: strOrNull(r[H.funcao]),
         codccusto: strOrNull(r[H.codccusto]),
         bu: strOrNull(r[H.bu]),
@@ -599,9 +619,7 @@ async function importFile(file){
         interj: toInt(r[H.interj]),
         he2: toInt(r[H.he2]),
         ga,
-        // GO recalculado pela hierarquia já cadastrada (mesma correção usada
-        // na carga original), com fallback pro valor da própria planilha.
-        go: GOMAP[ga] || strOrNull(r[H.go]),
+        go,
         ciclo: strOrNull(r[H.ciclo]),
         ciclo_inicio: toISODate(r[H.ciclo_inicio]),
         ciclo_fim: toISODate(r[H.ciclo_fim]),
@@ -613,7 +631,10 @@ async function importFile(file){
     return;
   }
 
-  const proceed = confirm(`Isso vai substituir os ${RECORDS.length} registro(s) atuais por ${newRecords.length} novo(s) registro(s) do arquivo "${file.name}". Continuar?`);
+  const avisoGa = gaResolvidosPeloRoster > 0
+    ? `\n\nAviso: ${gaResolvidosPeloRoster} linha(s) vieram com GA não resolvido no arquivo (ex.: "NAO ENCONTRADO") e foram corrigidas automaticamente usando a hierarquia já cadastrada, por nome do colaborador.`
+    : '';
+  const proceed = confirm(`Isso vai substituir os ${RECORDS.length} registro(s) atuais por ${newRecords.length} novo(s) registro(s) do arquivo "${file.name}".${avisoGa}\n\nContinuar?`);
   if (!proceed){
     setImportStatus('Importação cancelada.');
     return;
