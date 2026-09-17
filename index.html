@@ -6,6 +6,7 @@
 <title>Painel de Infrações de Ponto por GA</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#0f1420; --panel:#171e2e; --panel2:#1d2436; --border:#2a3348;
@@ -48,6 +49,12 @@
   .issues li{margin-bottom:8px;font-size:.85rem;color:var(--muted)}
   .pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:.78rem;color:var(--muted)}
   a{color:var(--accent)}
+  .import-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .status-msg{font-size:.82rem;margin-top:10px;color:var(--muted)}
+  .status-msg.error{color:var(--bad)}
+  .status-msg.ok{color:var(--good)}
+  .inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .inline-form label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px}
 
   #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
   .login-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:360px}
@@ -142,6 +149,29 @@
   </section>
 
   <section>
+    <h2>Importar base de análise</h2>
+    <div class="desc">Envie um arquivo .xlsx ou .csv no mesmo formato da aba <strong>BASE BI HE BH</strong> (colunas: DATAREFERENCIA, FUNCID, NOME, FUNCAO, CODCCUSTO, BU, SUB BU, PRIMEIRA_ENTRADA, ULTIMA_SAIDA, &gt;7 DIAS TRAB, INTERJORNADA, &gt;2 HORAS EXTRAS, GA (GESTOR IMEDIATO), GO (GESTOR OPERACIONAL), CICLO INÍCIO, CICLO FIM, CICLO). Isso <strong>substitui todos os registros atuais</strong> pelos do novo arquivo.</div>
+    <div class="import-row">
+      <input type="file" id="importFile" accept=".xlsx,.xls,.csv">
+      <button class="primary" id="importBtn">Importar base</button>
+    </div>
+    <div class="status-msg" id="importStatus"></div>
+  </section>
+
+  <section id="adminSection" style="display:none">
+    <h2>Gerenciar acessos</h2>
+    <div class="desc">Cria acesso para outra pessoa: ela recebe um email para definir a própria senha e fazer login no painel.</div>
+    <form class="inline-form" id="createUserForm">
+      <div>
+        <label for="newUserEmail">Email da pessoa</label>
+        <input type="email" id="newUserEmail" required placeholder="nome@empresa.com">
+      </div>
+      <button class="primary" type="submit">Enviar convite</button>
+    </form>
+    <div class="status-msg" id="createUserStatus"></div>
+  </section>
+
+  <section>
     <h2>Sobre este painel</h2>
     <ul class="issues" id="issuesList"></ul>
     <div class="footer-note">
@@ -159,6 +189,12 @@ const SUPABASE_URL = "https://ymltjceiviyadckxzbxw.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xekNQuBKCxGqMSO8uv20UQ_gK87DXPh";
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Só quem está nesta lista vê/consegue usar "Gerenciar acessos" (a Edge
+// Function "admin-create-user" tem a mesma checagem no servidor, que é a
+// barreira de segurança real -- isto aqui é só para esconder o botão de
+// quem não pode usar).
+const ADMIN_EMAILS = ["iatimcll@gmail.com"];
 
 let RECORDS = [], ROSTER = [], GOMAP = {}, META = {};
 
@@ -180,6 +216,7 @@ async function showApp(session){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('userEmail').textContent = session.user.email;
+  document.getElementById('adminSection').style.display = ADMIN_EMAILS.includes(session.user.email) ? 'block' : 'none';
   await loadData();
 }
 
@@ -454,6 +491,211 @@ function renderIssues(){
   document.getElementById('subtitle').textContent =
     `${META.total_registros.toLocaleString('pt-BR')} registros de ponto · ${META.colaboradores_com_registro} colaboradores com dados de ${META.colaboradores_no_roster} no roster`;
 }
+
+// ---------- Importar base de análise (padrão BASE BI HE BH) ----------
+
+function normalizeHeader(s){
+  return String(s ?? '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+function findHeader(headers, aliases, exact){
+  for (const h of headers){
+    const n = normalizeHeader(h);
+    for (const alias of aliases){
+      if (exact ? n === alias : n.includes(alias)) return h;
+    }
+  }
+  return null;
+}
+
+function toISODate(v){
+  if (v instanceof Date && !isNaN(v)) return v.toISOString().slice(0, 10);
+  if (typeof v === 'string' && v.trim()){
+    const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    const d = new Date(v);
+    if (!isNaN(d)) return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
+function toHM(v){
+  if (v instanceof Date && !isNaN(v)) return String(v.getHours()).padStart(2,'0') + ':' + String(v.getMinutes()).padStart(2,'0');
+  return null;
+}
+
+function toInt(v){ const n = Number(v); return isNaN(n) ? 0 : Math.round(n); }
+function strOrNull(v){ return v === null || v === undefined || v === '' ? null : String(v).trim(); }
+
+function setImportStatus(msg, kind){
+  const el = document.getElementById('importStatus');
+  el.textContent = msg;
+  el.className = 'status-msg' + (kind ? ' ' + kind : '');
+}
+
+async function importFile(file){
+  setImportStatus('Lendo arquivo…');
+  let wb;
+  try {
+    const buf = await file.arrayBuffer();
+    wb = XLSX.read(buf, { type: 'array', cellDates: true });
+  } catch (e){
+    setImportStatus('Não consegui ler o arquivo: ' + e.message, 'error');
+    return;
+  }
+
+  const sheetName = wb.SheetNames.includes('BASE BI HE BH') ? 'BASE BI HE BH' : wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
+  if (!rows.length){
+    setImportStatus('Arquivo vazio ou aba sem dados.', 'error');
+    return;
+  }
+
+  const headers = Object.keys(rows[0]);
+  const H = {
+    ciclo_inicio: findHeader(headers, ['ciclo inicio']),
+    ciclo_fim: findHeader(headers, ['ciclo fim']),
+    ciclo: findHeader(headers, ['ciclo'], true),
+    data: findHeader(headers, ['datareferencia']),
+    funcid: findHeader(headers, ['funcid']),
+    nome: findHeader(headers, ['nome'], true),
+    funcao: findHeader(headers, ['funcao'], true),
+    codccusto: findHeader(headers, ['codccusto']),
+    bu: findHeader(headers, ['bu'], true),
+    subbu: findHeader(headers, ['sub bu']),
+    entrada: findHeader(headers, ['primeira_entrada']),
+    saida: findHeader(headers, ['ultima_saida']),
+    dias7: findHeader(headers, ['7 dias trab']),
+    interj: findHeader(headers, ['interjornada']),
+    he2: findHeader(headers, ['horas extras']),
+    ga: findHeader(headers, ['gestor imediato']),
+    go: findHeader(headers, ['gestor operacional']),
+  };
+
+  const required = ['data','funcid','nome','dias7','interj','he2','ga','ciclo','ciclo_inicio','ciclo_fim'];
+  const missing = required.filter(k => !H[k]);
+  if (missing.length){
+    setImportStatus(`A aba "${sheetName}" não tem as colunas: ${missing.join(', ')}. Confira se o arquivo segue o padrão da BASE BI HE BH.`, 'error');
+    return;
+  }
+
+  const newRecords = rows
+    .filter(r => strOrNull(r[H.funcid]) !== null)
+    .map(r => {
+      const ga = strOrNull(r[H.ga]);
+      return {
+        data: toISODate(r[H.data]),
+        funcid: strOrNull(r[H.funcid]),
+        nome: strOrNull(r[H.nome]),
+        funcao: strOrNull(r[H.funcao]),
+        codccusto: strOrNull(r[H.codccusto]),
+        bu: strOrNull(r[H.bu]),
+        subbu: strOrNull(r[H.subbu]),
+        entrada: toHM(r[H.entrada]),
+        saida: toHM(r[H.saida]),
+        dias7: toInt(r[H.dias7]),
+        interj: toInt(r[H.interj]),
+        he2: toInt(r[H.he2]),
+        ga,
+        // GO recalculado pela hierarquia já cadastrada (mesma correção usada
+        // na carga original), com fallback pro valor da própria planilha.
+        go: GOMAP[ga] || strOrNull(r[H.go]),
+        ciclo: strOrNull(r[H.ciclo]),
+        ciclo_inicio: toISODate(r[H.ciclo_inicio]),
+        ciclo_fim: toISODate(r[H.ciclo_fim]),
+      };
+    });
+
+  if (!newRecords.length){
+    setImportStatus('Nenhuma linha válida encontrada no arquivo.', 'error');
+    return;
+  }
+
+  const proceed = confirm(`Isso vai substituir os ${RECORDS.length} registro(s) atuais por ${newRecords.length} novo(s) registro(s) do arquivo "${file.name}". Continuar?`);
+  if (!proceed){
+    setImportStatus('Importação cancelada.');
+    return;
+  }
+
+  setImportStatus('Removendo dados atuais…');
+  const { error: delErr } = await sb.from('infracoes_registros').delete().gt('id', 0);
+  if (delErr){
+    setImportStatus('Erro ao limpar a base atual: ' + delErr.message, 'error');
+    return;
+  }
+
+  const batchSize = 500;
+  for (let i = 0; i < newRecords.length; i += batchSize){
+    const chunk = newRecords.slice(i, i + batchSize);
+    setImportStatus(`Enviando registros ${i + 1}–${i + chunk.length} de ${newRecords.length}…`);
+    const { error } = await sb.from('infracoes_registros').insert(chunk);
+    if (error){
+      setImportStatus(`Erro ao inserir lote (${i + 1}–${i + chunk.length}): ${error.message}`, 'error');
+      return;
+    }
+  }
+
+  const cyclesMap = {};
+  newRecords.forEach(r => {
+    if (r.ciclo_inicio) cyclesMap[r.ciclo_inicio] = { inicio: r.ciclo_inicio, fim: r.ciclo_fim, label: r.ciclo };
+  });
+  const ciclos = Object.values(cyclesMap).sort((a, b) => a.inicio.localeCompare(b.inicio));
+  const newMeta = {
+    ...META,
+    gerado_em: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    total_registros: newRecords.length,
+    colaboradores_com_registro: new Set(newRecords.map(r => r.funcid)).size,
+    ciclos,
+  };
+  const { error: metaErr } = await sb.from('infracoes_meta').upsert({ chave: 'meta', valor: newMeta }, { onConflict: 'chave' });
+  if (metaErr){
+    setImportStatus(`Registros importados, mas houve erro ao atualizar os metadados: ${metaErr.message}`, 'error');
+  } else {
+    setImportStatus(`Importação concluída: ${newRecords.length} registro(s) carregados de "${file.name}".`, 'ok');
+  }
+
+  await loadData();
+}
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  const input = document.getElementById('importFile');
+  if (!input.files.length){
+    setImportStatus('Selecione um arquivo primeiro.', 'error');
+    return;
+  }
+  importFile(input.files[0]);
+});
+
+// ---------- Gerenciar acessos ----------
+
+document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('newUserEmail').value.trim();
+  const statusBox = document.getElementById('createUserStatus');
+  statusBox.className = 'status-msg';
+  statusBox.textContent = 'Enviando convite…';
+  try {
+    const { data, error } = await sb.functions.invoke('admin-create-user', { body: { email } });
+    if (error){
+      statusBox.className = 'status-msg error';
+      statusBox.textContent = 'Erro: ' + error.message;
+      return;
+    }
+    if (data && data.error){
+      statusBox.className = 'status-msg error';
+      statusBox.textContent = 'Erro: ' + data.error;
+      return;
+    }
+    statusBox.className = 'status-msg ok';
+    statusBox.textContent = `Convite enviado para ${email}. A pessoa vai receber um email para criar a senha e acessar o painel.`;
+    document.getElementById('newUserEmail').value = '';
+  } catch (e){
+    statusBox.className = 'status-msg error';
+    statusBox.textContent = 'Falha ao chamar a função de convite: ' + e.message;
+  }
+});
 
 let initialized = false;
 function init(){
