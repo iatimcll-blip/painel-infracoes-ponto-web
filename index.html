@@ -127,6 +127,29 @@
   .inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
   .inline-form label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px}
 
+  .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .menu-wrap{position:relative}
+  .menu-popover{
+    display:none; position:absolute; right:0; top:calc(100% + 10px); width:320px;
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg);
+    padding:16px; box-shadow:0 16px 40px rgba(0,0,0,.5); z-index:60;
+  }
+  .menu-popover.open{display:block}
+  .menu-popover h3{margin:0 0 10px;font-size:.92rem}
+  .menu-popover hr{border:none;border-top:1px solid var(--border);margin:14px 0}
+  .stack-form label{display:block;font-size:.78rem;color:var(--muted);margin:10px 0 4px}
+  .stack-form input{width:100%}
+  .stack-form button{width:100%;margin-top:12px}
+
+  #toast{
+    position:fixed; top:56px; left:50%; transform:translateX(-50%); z-index:100;
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px;
+    padding:10px 18px; font-size:.85rem; box-shadow:0 10px 30px rgba(0,0,0,.4);
+    display:none; max-width:90vw;
+  }
+  #toast.error{border-color:rgba(255,69,58,.5); color:#ffb4af}
+  #toast.ok{border-color:rgba(50,215,75,.5); color:#8cf0a2}
+
   #loginScreen{min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px}
   .login-card{
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0)), var(--panel);
@@ -171,11 +194,53 @@
     <h1>📊 Painel de Infrações de Ponto por GA</h1>
     <p id="subtitle">carregando dados…</p>
   </div>
-  <div>
+  <div class="header-actions">
+    <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden>
+    <button class="ghost" id="importBtn" title="Importar base de análise (padrão BASE BI HE BH)">📎 Importar base</button>
+
+    <div class="menu-wrap">
+      <button class="ghost" id="hierMenuBtn" title="Hierarquia: GO, GA e colaboradores">🏷️ Hierarquia</button>
+      <div class="menu-popover" id="hierMenu">
+        <h3>Adicionar à hierarquia</h3>
+        <form class="stack-form" id="hierCreateForm">
+          <label for="hierGO">GO (Gestor Operacional)</label>
+          <input type="text" id="hierGO" list="hierGOList" required>
+          <datalist id="hierGOList"></datalist>
+          <label for="hierGA">GA (Gestor de Área)</label>
+          <input type="text" id="hierGA" list="hierGAList" required>
+          <datalist id="hierGAList"></datalist>
+          <label for="hierNome">Colaborador</label>
+          <input type="text" id="hierNome" required>
+          <button class="primary" type="submit">Adicionar</button>
+        </form>
+        <hr>
+        <h3>Ou anexar arquivo</h3>
+        <div class="desc" style="margin-bottom:8px">Colunas: GO (GESTOR OPERACIONAL), GA (GESTOR DE ÁREA), NOME. Substitui toda a hierarquia atual.</div>
+        <input type="file" id="hierFile" accept=".xlsx,.xls,.csv" style="width:100%">
+        <button class="primary" id="hierImportBtn" style="width:100%;margin-top:10px">Importar hierarquia</button>
+      </div>
+    </div>
+
+    <div class="menu-wrap" id="adminMenuWrap" style="display:none">
+      <button class="ghost" id="adminMenuBtn" title="Gerenciar acessos">👤 Acessos</button>
+      <div class="menu-popover" id="adminMenu">
+        <h3>Gerenciar acessos</h3>
+        <div class="desc" style="margin-bottom:8px">Cria acesso para outra pessoa: ela recebe um email para definir a própria senha.</div>
+        <form class="stack-form" id="createUserForm">
+          <label for="newUserEmail">Email da pessoa</label>
+          <input type="email" id="newUserEmail" required placeholder="nome@empresa.com">
+          <button class="primary" type="submit">Enviar convite</button>
+        </form>
+        <div class="status-msg" id="createUserStatus"></div>
+      </div>
+    </div>
+
     <span class="pill" id="userEmail"></span>
     <button class="ghost" id="logoutBtn">Sair</button>
   </div>
 </header>
+
+<div id="toast"></div>
 
 <div id="loadErrorBanner" style="display:none">
   <span>⚠️ <span id="loadErrorMsg"></span></span>
@@ -265,37 +330,6 @@
     </div>
   </section>
 
-  <section>
-    <h2>Importar base de análise</h2>
-    <div class="desc">Envie um arquivo .xlsx ou .csv no mesmo formato da aba <strong>BASE BI HE BH</strong> (colunas: DATAREFERENCIA, FUNCID, NOME, FUNCAO, CODCCUSTO, BU, SUB BU, PRIMEIRA_ENTRADA, ULTIMA_SAIDA, &gt;7 DIAS TRAB, INTERJORNADA, &gt;2 HORAS EXTRAS, GA (GESTOR IMEDIATO), GO (GESTOR OPERACIONAL), CICLO INÍCIO, CICLO FIM, CICLO). Isso <strong>substitui todos os registros atuais</strong> pelos do novo arquivo.</div>
-    <div class="import-row">
-      <input type="file" id="importFile" accept=".xlsx,.xls,.csv">
-      <button class="primary" id="importBtn">Importar base</button>
-    </div>
-    <div class="status-msg" id="importStatus"></div>
-  </section>
-
-  <section id="adminSection" style="display:none">
-    <h2>Gerenciar acessos</h2>
-    <div class="desc">Cria acesso para outra pessoa: ela recebe um email para definir a própria senha e fazer login no painel.</div>
-    <form class="inline-form" id="createUserForm">
-      <div>
-        <label for="newUserEmail">Email da pessoa</label>
-        <input type="email" id="newUserEmail" required placeholder="nome@empresa.com">
-      </div>
-      <button class="primary" type="submit">Enviar convite</button>
-    </form>
-    <div class="status-msg" id="createUserStatus"></div>
-  </section>
-
-  <section>
-    <h2>Sobre este painel</h2>
-    <ul class="issues" id="issuesList"></ul>
-    <div class="footer-note">
-      Acesso protegido por login (Supabase Auth) e por Row Level Security no banco — os dados só ficam visíveis para contas autorizadas.
-    </div>
-  </section>
-
 </div>
 </div>
 
@@ -345,7 +379,7 @@ async function showApp(session){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   document.getElementById('userEmail').textContent = session.user.email;
-  document.getElementById('adminSection').style.display = ADMIN_EMAILS.includes(session.user.email) ? 'block' : 'none';
+  document.getElementById('adminMenuWrap').style.display = ADMIN_EMAILS.includes(session.user.email) ? '' : 'none';
   await loadData();
 }
 
@@ -700,8 +734,6 @@ function renderAll(){
 }
 
 function renderIssues(){
-  const ul = document.getElementById('issuesList');
-  ul.innerHTML = (META.inconsistencias_corrigidas||[]).map(t => `<li>${t}</li>`).join('');
   document.getElementById('lastGenerated').textContent = 'Dados gerados em ' + META.gerado_em;
   document.getElementById('subtitle').textContent =
     `${META.total_registros.toLocaleString('pt-BR')} registros de ponto · ${META.colaboradores_com_registro} colaboradores com dados de ${ROSTER.length} no roster`;
@@ -744,10 +776,16 @@ function toHM(v){
 function toInt(v){ const n = Number(v); return isNaN(n) ? 0 : Math.round(n); }
 function strOrNull(v){ return v === null || v === undefined || v === '' ? null : String(v).trim(); }
 
+let toastTimer = null;
 function setImportStatus(msg, kind){
-  const el = document.getElementById('importStatus');
+  const el = document.getElementById('toast');
   el.textContent = msg;
-  el.className = 'status-msg' + (kind ? ' ' + kind : '');
+  el.className = kind || '';
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  if (kind === 'ok' || kind === 'error'){
+    toastTimer = setTimeout(() => { el.style.display = 'none'; }, 8000);
+  }
 }
 
 async function importFile(file){
@@ -896,12 +934,119 @@ async function importFile(file){
 }
 
 document.getElementById('importBtn').addEventListener('click', () => {
-  const input = document.getElementById('importFile');
-  if (!input.files.length){
-    setImportStatus('Selecione um arquivo primeiro.', 'error');
+  document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', (e) => {
+  if (e.target.files.length) importFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+// ---------- Menus (Hierarquia / Gerenciar acessos) ----------
+
+function toggleMenu(popoverEl){
+  const wasOpen = popoverEl.classList.contains('open');
+  document.querySelectorAll('.menu-popover.open').forEach(p => p.classList.remove('open'));
+  if (!wasOpen) popoverEl.classList.add('open');
+}
+document.getElementById('hierMenuBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleMenu(document.getElementById('hierMenu'));
+});
+document.getElementById('adminMenuBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleMenu(document.getElementById('adminMenu'));
+});
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('.menu-popover.open').forEach(p => {
+    if (!p.contains(e.target)) p.classList.remove('open');
+  });
+});
+
+// ---------- Hierarquia (GO / GA / colaborador) ----------
+
+function buildHierDatalists(){
+  const goList = document.getElementById('hierGOList');
+  const gaList = document.getElementById('hierGAList');
+  goList.innerHTML = [...new Set(Object.values(GOMAP).filter(Boolean))].sort()
+    .map(v => `<option value="${v}">`).join('');
+  gaList.innerHTML = [...new Set(ROSTER.map(r => r.ga).filter(Boolean))].sort()
+    .map(v => `<option value="${v}">`).join('');
+}
+
+document.getElementById('hierCreateForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const go = document.getElementById('hierGO').value.trim();
+  const ga = document.getElementById('hierGA').value.trim();
+  const nome = document.getElementById('hierNome').value.trim();
+  if (!go || !ga || !nome) return;
+
+  setImportStatus('Adicionando à hierarquia…');
+  const { error: e1 } = await sb.from('infracoes_roster').insert({ ga, nome, go });
+  if (e1){ setImportStatus('Erro ao adicionar: ' + e1.message, 'error'); return; }
+  const { error: e2 } = await sb.from('infracoes_go_map').upsert({ ga, go }, { onConflict: 'ga' });
+  if (e2){ setImportStatus('Colaborador adicionado, mas houve erro ao atualizar o mapa GA→GO: ' + e2.message, 'error'); }
+  else { setImportStatus(`"${nome}" adicionado(a) à hierarquia.`, 'ok'); }
+
+  document.getElementById('hierCreateForm').reset();
+  document.getElementById('hierMenu').classList.remove('open');
+  await loadData();
+});
+
+document.getElementById('hierImportBtn').addEventListener('click', async () => {
+  const input = document.getElementById('hierFile');
+  const file = input.files[0];
+  if (!file){ setImportStatus('Selecione um arquivo de hierarquia primeiro.', 'error'); return; }
+
+  setImportStatus('Lendo arquivo de hierarquia…');
+  let wb;
+  try {
+    const buf = await file.arrayBuffer();
+    wb = XLSX.read(buf, { type: 'array', cellDates: true });
+  } catch (err){
+    setImportStatus('Não consegui ler o arquivo: ' + err.message, 'error');
     return;
   }
-  importFile(input.files[0]);
+
+  const sheetName = wb.SheetNames.includes('BASE HIERARQUIA') ? 'BASE HIERARQUIA' : wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: null });
+  if (!rows.length){ setImportStatus('Arquivo vazio ou aba sem dados.', 'error'); return; }
+
+  const headers = Object.keys(rows[0]);
+  const hGO = findHeader(headers, ['gestor operacional']);
+  const hGA = findHeader(headers, ['gestor de area', 'gestor imediato']);
+  const hNome = findHeader(headers, ['nome'], true);
+  if (!hGO || !hGA || !hNome){
+    setImportStatus(`A aba "${sheetName}" precisa das colunas GO (GESTOR OPERACIONAL), GA (GESTOR DE ÁREA) e NOME.`, 'error');
+    return;
+  }
+
+  const newRoster = rows
+    .map(r => ({ go: strOrNull(r[hGO]), ga: strOrNull(r[hGA]), nome: strOrNull(r[hNome]) }))
+    .filter(r => r.go && r.ga && r.nome);
+  if (!newRoster.length){ setImportStatus('Nenhuma linha válida encontrada no arquivo.', 'error'); return; }
+
+  const proceed = confirm(`Isso vai substituir toda a hierarquia atual (${ROSTER.length} colaborador(es)) por ${newRoster.length} do arquivo "${file.name}". Continuar?`);
+  if (!proceed){ setImportStatus('Importação de hierarquia cancelada.'); return; }
+
+  const goMapObj = {};
+  newRoster.forEach(r => { goMapObj[r.ga] = r.go; });
+  const newGoMap = Object.entries(goMapObj).map(([ga, go]) => ({ ga, go }));
+
+  setImportStatus('Substituindo hierarquia…');
+  const { error: delRosterErr } = await sb.from('infracoes_roster').delete().gt('id', 0);
+  if (delRosterErr){ setImportStatus('Erro ao limpar hierarquia atual: ' + delRosterErr.message, 'error'); return; }
+  const { error: delGoErr } = await sb.from('infracoes_go_map').delete().gt('id', 0);
+  if (delGoErr){ setImportStatus('Erro ao limpar mapa GA→GO: ' + delGoErr.message, 'error'); return; }
+
+  const { error: insRosterErr } = await sb.from('infracoes_roster').insert(newRoster);
+  if (insRosterErr){ setImportStatus('Erro ao inserir hierarquia: ' + insRosterErr.message, 'error'); return; }
+  const { error: insGoErr } = await sb.from('infracoes_go_map').insert(newGoMap);
+  if (insGoErr){ setImportStatus('Hierarquia inserida, mas houve erro no mapa GA→GO: ' + insGoErr.message, 'error'); }
+  else { setImportStatus(`Hierarquia atualizada: ${newRoster.length} colaborador(es).`, 'ok'); }
+
+  input.value = '';
+  document.getElementById('hierMenu').classList.remove('open');
+  await loadData();
 });
 
 // ---------- Gerenciar acessos ----------
@@ -938,6 +1083,7 @@ function init(){
   buildCycleOptions();
   buildGoOptions();
   buildColabGaOptions();
+  buildHierDatalists();
   renderIssues();
   renderAll();
 
