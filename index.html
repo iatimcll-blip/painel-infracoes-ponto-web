@@ -489,7 +489,7 @@ function renderIssues(){
   ul.innerHTML = (META.inconsistencias_corrigidas||[]).map(t => `<li>${t}</li>`).join('');
   document.getElementById('lastGenerated').textContent = 'Dados gerados em ' + META.gerado_em;
   document.getElementById('subtitle').textContent =
-    `${META.total_registros.toLocaleString('pt-BR')} registros de ponto · ${META.colaboradores_com_registro} colaboradores com dados de ${META.colaboradores_no_roster} no roster`;
+    `${META.total_registros.toLocaleString('pt-BR')} registros de ponto · ${META.colaboradores_com_registro} colaboradores com dados de ${ROSTER.length} no roster`;
 }
 
 // ---------- Importar base de análise (padrão BASE BI HE BH) ----------
