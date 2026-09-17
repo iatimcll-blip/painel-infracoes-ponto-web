@@ -150,6 +150,30 @@
   #toast.error{border-color:rgba(255,69,58,.5); color:#ffb4af}
   #toast.ok{border-color:rgba(50,215,75,.5); color:#8cf0a2}
 
+  .infra-link{color:var(--accent);text-decoration:none;cursor:pointer;font-variant-numeric:tabular-nums}
+  .infra-link:hover{text-decoration:underline}
+  .infra-zero{color:var(--muted);font-variant-numeric:tabular-nums}
+
+  #detailModalOverlay{
+    display:none; position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,.55); align-items:center; justify-content:center; padding:20px;
+  }
+  #detailModalOverlay.open{display:flex}
+  #detailModal{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg);
+    width:100%; max-width:420px; max-height:80vh; display:flex; flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .detail-modal-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 18px; border-bottom:1px solid var(--border);
+  }
+  .detail-modal-header h3{margin:0;font-size:.98rem}
+  #detailModalBody{padding:14px 18px 18px; overflow-y:auto}
+  #detailModalBody table{width:100%;border-collapse:collapse;font-size:.85rem}
+  #detailModalBody th,#detailModalBody td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--border)}
+  #detailModalBody th{color:var(--muted);font-size:.7rem;text-transform:uppercase}
+
   #loginScreen{min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px}
   .login-card{
     background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0)), var(--panel);
@@ -310,14 +334,13 @@
       <label for="colabGaSel" class="pill">GA:</label>
       <select id="colabGaSel"><option value="">Todos</option></select>
     </div>
-    <input class="search" id="searchBox" type="text" placeholder="Buscar colaborador, GA ou função…">
     <div style="max-height:480px;overflow:auto">
       <table id="tblColab">
         <thead>
           <tr>
-            <th data-k="nome">Colaborador</th>
-            <th data-k="ga">GA</th>
             <th data-k="go">GO</th>
+            <th data-k="ga">GA</th>
+            <th data-k="nome">Colaborador</th>
             <th data-k="registros" class="num">Registros</th>
             <th data-k="dias7" class="num">&gt;7 dias trab.</th>
             <th data-k="interj" class="num">Interjornada</th>
@@ -331,6 +354,16 @@
   </section>
 
 </div>
+</div>
+
+<div id="detailModalOverlay">
+  <div id="detailModal">
+    <div class="detail-modal-header">
+      <h3 id="detailModalTitle"></h3>
+      <button class="ghost" id="detailModalClose">✕</button>
+    </div>
+    <div id="detailModalBody"></div>
+  </div>
 </div>
 
   </div>
@@ -702,25 +735,74 @@ function buildColabRows(){
   return Object.values(byNome).map(e => ({...e, total: e.dias7+e.interj+e.he2}));
 }
 
+const TIPO_LABELS = {
+  dias7: '>7 dias trabalhados',
+  interj: 'Interjornada',
+  he2: '>2 horas extras',
+  total: 'Todas as infrações',
+};
+
+function fmtDataBR(iso){
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function showInfractionDates(nome, tipo){
+  const recs = filteredRecords()
+    .filter(r => r.nome === nome)
+    .filter(r => tipo === 'total' ? (r.dias7 || r.interj || r.he2) : r[tipo])
+    .sort((a,b) => a.data.localeCompare(b.data));
+
+  document.getElementById('detailModalTitle').textContent = `${TIPO_LABELS[tipo]} — ${nome}`;
+  const body = document.getElementById('detailModalBody');
+  if (!recs.length){
+    body.innerHTML = `<p class="desc" style="margin:0">Nenhuma data encontrada no filtro atual.</p>`;
+  } else {
+    const showTipos = tipo === 'total';
+    body.innerHTML = `
+      <table>
+        <thead><tr><th>Data</th>${showTipos ? '<th>Infração(ões)</th>' : ''}</tr></thead>
+        <tbody>
+          ${recs.map(r => {
+            const tipos = [];
+            if (r.dias7) tipos.push('>7 dias trab.');
+            if (r.interj) tipos.push('Interjornada');
+            if (r.he2) tipos.push('>2h extras');
+            return `<tr><td>${fmtDataBR(r.data)}</td>${showTipos ? `<td>${tipos.join(', ')}</td>` : ''}</tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+  document.getElementById('detailModalOverlay').classList.add('open');
+}
+
+function closeDetailModal(){
+  document.getElementById('detailModalOverlay').classList.remove('open');
+}
+
+function infraCell(nome, tipo, valor){
+  if (!valor) return `<td class="num infra-zero">0</td>`;
+  return `<td class="num"><a href="#" class="infra-link" data-nome="${nome.replace(/"/g,'&quot;')}" data-tipo="${tipo}">${valor}</a></td>`;
+}
+
 function renderTable(){
   const rows = buildColabRows();
-  const q = document.getElementById('searchBox').value.trim().toLowerCase();
-  let filtered = rows.filter(r => !q || r.nome.toLowerCase().includes(q) || (r.ga||'').toLowerCase().includes(q));
-  filtered.sort((a,b) => {
+  rows.sort((a,b) => {
     const {k,dir} = sortState;
     if (typeof a[k] === 'string') return dir * a[k].localeCompare(b[k]);
     return dir * ((a[k]??0) - (b[k]??0));
   });
   const tbody = document.querySelector('#tblColab tbody');
-  tbody.innerHTML = filtered.map(r => `
+  tbody.innerHTML = rows.map(r => `
     <tr>
-      <td>${r.nome}</td>
-      <td>${r.ga||'-'}</td>
       <td>${r.go||'-'}</td>
+      <td>${r.ga||'-'}</td>
+      <td>${r.nome}</td>
       <td class="num">${r.registros}</td>
       ${r.registros===0
         ? `<td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">sem dados</td>`
-        : `<td class="num">${r.dias7}</td><td class="num">${r.interj}</td><td class="num">${r.he2}</td><td class="num">${r.total}</td>`}
+        : `${infraCell(r.nome,'dias7',r.dias7)}${infraCell(r.nome,'interj',r.interj)}${infraCell(r.nome,'he2',r.he2)}${infraCell(r.nome,'total',r.total)}`}
     </tr>
   `).join('');
 }
@@ -1094,13 +1176,22 @@ function init(){
       renderAll();
     });
     document.getElementById('colabGaSel').addEventListener('change', renderTable);
-    document.getElementById('searchBox').addEventListener('input', renderTable);
     document.querySelectorAll('#tblColab th').forEach(th => {
       th.addEventListener('click', () => {
         const k = th.dataset.k;
         sortState = {k, dir: sortState.k===k ? -sortState.dir : -1};
         renderTable();
       });
+    });
+    document.querySelector('#tblColab tbody').addEventListener('click', (e) => {
+      const link = e.target.closest('.infra-link');
+      if (!link) return;
+      e.preventDefault();
+      showInfractionDates(link.dataset.nome, link.dataset.tipo);
+    });
+    document.getElementById('detailModalClose').addEventListener('click', closeDetailModal);
+    document.getElementById('detailModalOverlay').addEventListener('click', (e) => {
+      if (e.target.id === 'detailModalOverlay') closeDetailModal();
     });
     initialized = true;
   }
