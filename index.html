@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel de Infrações de Ponto por GA</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -20,25 +21,18 @@
     margin:0;color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",Roboto,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
-    background:
-      radial-gradient(ellipse 80% 60% at 20% 0%, #3a2a6d 0%, transparent 55%),
-      radial-gradient(ellipse 80% 60% at 85% 15%, #1f4e8c 0%, transparent 55%),
-      radial-gradient(ellipse 90% 70% at 50% 100%, #6d2a5e 0%, transparent 55%),
-      #0d1017;
-    display:flex; align-items:center; justify-content:center;
-    padding:28px;
+    background:#0d1017;
   }
   ::-webkit-scrollbar{width:10px;height:10px}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:10px;border:2px solid transparent;background-clip:content-box}
   ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26);background-clip:content-box}
   ::-webkit-scrollbar-track{background:transparent}
 
-  /* ---------- janela estilo macOS ---------- */
+  /* ---------- janela estilo macOS, ocupando a página inteira ---------- */
   .mac-window{
-    width:100%; max-width:1360px; height:calc(100vh - 56px); max-height:940px;
-    background:var(--bg); border-radius:14px; overflow:hidden;
+    width:100vw; height:100vh;
+    background:var(--bg); overflow:hidden;
     display:flex; flex-direction:column;
-    box-shadow:0 30px 70px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06);
   }
   .mac-titlebar{
     flex:0 0 auto; height:40px; display:flex; align-items:center; position:relative;
@@ -56,10 +50,6 @@
     font-size:13px; font-weight:600; color:#9aa0ab; letter-spacing:.01em;
   }
   .mac-body{flex:1 1 auto; overflow-y:auto; overflow-x:hidden; position:relative}
-  @media (max-width:720px){
-    body{padding:0}
-    .mac-window{height:100vh; max-height:none; border-radius:0; box-shadow:none}
-  }
 
   header{
     padding:18px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;
@@ -68,7 +58,19 @@
   }
   header h1{margin:0;font-size:1.3rem;letter-spacing:-.01em}
   header p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
-  .container{max-width:1200px;margin:0 auto;padding:22px 24px 60px}
+  .container{max-width:1440px;margin:0 auto;padding:22px 24px 60px}
+  #loadErrorBanner{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    margin:16px 24px 0; padding:12px 16px; border-radius:10px;
+    background:rgba(255,69,58,.12); border:1px solid rgba(255,69,58,.35); color:#ffb4af; font-size:.85rem;
+  }
+  .chart-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:14px}
+  .chart-table th,.chart-table td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
+  .chart-table th{color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em}
+  .chart-table td.num,.chart-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .chart-table tbody tr:hover{background:rgba(255,255,255,.04)}
+  .chart-table tfoot td{font-weight:700;border-top:1px solid var(--border);border-bottom:none}
+  .table-wrap{max-height:320px;overflow:auto}
   .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:22px}
   select,input,button{
     background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:9px;
@@ -175,6 +177,11 @@
   </div>
 </header>
 
+<div id="loadErrorBanner" style="display:none">
+  <span>⚠️ <span id="loadErrorMsg"></span></span>
+  <button class="primary" id="loadErrorRetry">Tentar novamente</button>
+</div>
+
 <div class="container">
 
   <div class="controls">
@@ -191,18 +198,44 @@
     <h2>Infrações por GO (Gestor Operacional)</h2>
     <div class="desc">GO calculado a partir da hierarquia mais atual cadastrada.</div>
     <div class="chart-wrap"><canvas id="chartGO"></canvas></div>
+    <div class="table-wrap">
+      <table class="chart-table" id="tblGO">
+        <thead>
+          <tr><th>GO</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot><tr><td>Total geral</td><td class="num" id="tblGOTotDias7"></td><td class="num" id="tblGOTotInterj"></td><td class="num" id="tblGOTotHe2"></td><td class="num" id="tblGOTotTotal"></td></tr></tfoot>
+      </table>
+    </div>
   </section>
 
   <section>
     <h2>Infrações por GA (Gestor de Área)</h2>
     <div class="desc">Barras empilhadas por tipo de infração no ciclo selecionado. GAs sem nenhum registro de ponto aparecem à parte na tabela abaixo como "sem dados".</div>
     <div class="chart-wrap" style="height:420px"><canvas id="chartGA"></canvas></div>
+    <div class="table-wrap">
+      <table class="chart-table" id="tblGA">
+        <thead>
+          <tr><th>GA</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot><tr><td>Total geral</td><td class="num" id="tblGATotDias7"></td><td class="num" id="tblGATotInterj"></td><td class="num" id="tblGATotHe2"></td><td class="num" id="tblGATotTotal"></td></tr></tfoot>
+      </table>
+    </div>
   </section>
 
   <section>
     <h2>Evolução por ciclo</h2>
     <div class="desc">Histórico de todos os ciclos com dados na base. Ciclos sem nenhum registro não entram no cálculo de variação.</div>
     <div class="chart-wrap"><canvas id="chartEvol"></canvas></div>
+    <div class="table-wrap">
+      <table class="chart-table" id="tblEvol">
+        <thead>
+          <tr><th>Ciclo</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th><th class="num">Variação (Δ)</th><th>Avaliação</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </section>
 
   <section>
@@ -272,6 +305,15 @@ const SUPABASE_URL = "https://ymltjceiviyadckxzbxw.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xekNQuBKCxGqMSO8uv20UQ_gK87DXPh";
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
+
+const DATALABEL_STYLE = {
+  color: '#fff',
+  font: { size: 10, weight: '700' },
+  textStrokeColor: 'rgba(0,0,0,.55)',
+  textStrokeWidth: 3,
+  formatter: (v) => v > 0 ? v.toLocaleString('pt-BR') : '',
+};
 
 // Só quem está nesta lista vê/consegue usar "Gerenciar acessos" (a Edge
 // Function "admin-create-user" tem a mesma checagem no servidor, que é a
@@ -322,6 +364,21 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   location.reload();
 });
 
+document.getElementById('loadErrorRetry').addEventListener('click', () => {
+  document.getElementById('subtitle').textContent = 'carregando dados…';
+  loadData();
+});
+
+function showLoadError(msg){
+  const box = document.getElementById('loadErrorBanner');
+  document.getElementById('loadErrorMsg').textContent = msg;
+  box.style.display = 'flex';
+  document.getElementById('subtitle').textContent = 'Não foi possível carregar os dados.';
+}
+function hideLoadError(){
+  document.getElementById('loadErrorBanner').style.display = 'none';
+}
+
 async function loadData(){
   const [regRes, rosterRes, goRes, metaRes] = await Promise.all([
     sb.from('infracoes_registros').select('*'),
@@ -330,10 +387,12 @@ async function loadData(){
     sb.from('infracoes_meta').select('*').eq('chave','meta').single(),
   ]);
   if (regRes.error || rosterRes.error || goRes.error || metaRes.error){
-    document.getElementById('subtitle').textContent = 'Erro ao carregar dados. Tente novamente.';
-    console.error(regRes.error || rosterRes.error || goRes.error || metaRes.error);
+    const err = regRes.error || rosterRes.error || goRes.error || metaRes.error;
+    console.error(err);
+    showLoadError(err.message || 'Falha ao conectar com o banco de dados.');
     return;
   }
+  hideLoadError();
   RECORDS = regRes.data;
   ROSTER = rosterRes.data;
   GOMAP = {}; goRes.data.forEach(x => GOMAP[x.ga] = x.go);
@@ -446,7 +505,7 @@ function renderChartGO(){
     byGO[go].dias7 += r.dias7; byGO[go].interj += r.interj; byGO[go].he2 += r.he2;
   });
   const labels = Object.keys(byGO).sort((a,b)=> (byGO[b].dias7+byGO[b].interj+byGO[b].he2) - (byGO[a].dias7+byGO[a].interj+byGO[a].he2));
-  const ds = (key,label,color) => ({label, backgroundColor:color, data: labels.map(l=>byGO[l][key])});
+  const ds = (key,label,color) => ({label, backgroundColor:color, data: labels.map(l=>byGO[l][key]), datalabels: DATALABEL_STYLE});
   const data = {
     labels,
     datasets: [
@@ -461,9 +520,21 @@ function renderChartGO(){
     data,
     options:{responsive:true, maintainAspectRatio:false,
       scales:{x:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}},
-      plugins:{legend:{labels:{color:'#e8ecf4'}}}
+      plugins:{legend:{labels:{color:'#e8ecf4'}}, datalabels: DATALABEL_STYLE}
     }
   });
+
+  const totals = {dias7:0, interj:0, he2:0, total:0};
+  const tbody = document.querySelector('#tblGO tbody');
+  tbody.innerHTML = labels.map(go => {
+    const g = byGO[go]; const t = g.dias7+g.interj+g.he2;
+    totals.dias7+=g.dias7; totals.interj+=g.interj; totals.he2+=g.he2; totals.total+=t;
+    return `<tr><td>${go}</td><td class="num">${g.dias7}</td><td class="num">${g.interj}</td><td class="num">${g.he2}</td><td class="num">${t}</td></tr>`;
+  }).join('') || `<tr><td colspan="5" class="tag-semdados">Sem registros no filtro atual.</td></tr>`;
+  document.getElementById('tblGOTotDias7').textContent = totals.dias7;
+  document.getElementById('tblGOTotInterj').textContent = totals.interj;
+  document.getElementById('tblGOTotHe2').textContent = totals.he2;
+  document.getElementById('tblGOTotTotal').textContent = totals.total;
 }
 
 function renderChartGA(){
@@ -478,7 +549,7 @@ function renderChartGA(){
   rosterGAs.forEach(ga => { if(!byGA[ga]) byGA[ga] = {dias7:0,interj:0,he2:0,semdados:true}; });
 
   const labels = Object.keys(byGA).sort((a,b)=> (byGA[b].dias7+byGA[b].interj+byGA[b].he2) - (byGA[a].dias7+byGA[a].interj+byGA[a].he2));
-  const ds = (key,label,color) => ({label, backgroundColor:color, data: labels.map(l=>byGA[l][key])});
+  const ds = (key,label,color) => ({label, backgroundColor:color, data: labels.map(l=>byGA[l][key]), datalabels: DATALABEL_STYLE});
   const data = {
     labels,
     datasets: [
@@ -493,30 +564,70 @@ function renderChartGA(){
     data,
     options:{responsive:true, maintainAspectRatio:false, indexAxis:'y',
       scales:{x:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'transparent'}}},
-      plugins:{legend:{labels:{color:'#e8ecf4'}}}
+      plugins:{legend:{labels:{color:'#e8ecf4'}}, datalabels: DATALABEL_STYLE}
     }
   });
+
+  const totals = {dias7:0, interj:0, he2:0, total:0};
+  const tbodyGA = document.querySelector('#tblGA tbody');
+  tbodyGA.innerHTML = labels.map(ga => {
+    const g = byGA[ga]; const t = g.dias7+g.interj+g.he2;
+    totals.dias7+=g.dias7; totals.interj+=g.interj; totals.he2+=g.he2; totals.total+=t;
+    const semDados = g.semdados ? ` <span class="tag-semdados">(sem dados)</span>` : '';
+    return `<tr><td>${ga}${semDados}</td><td class="num">${g.dias7}</td><td class="num">${g.interj}</td><td class="num">${g.he2}</td><td class="num">${t}</td></tr>`;
+  }).join('') || `<tr><td colspan="5" class="tag-semdados">Sem registros no filtro atual.</td></tr>`;
+  document.getElementById('tblGATotDias7').textContent = totals.dias7;
+  document.getElementById('tblGATotInterj').textContent = totals.interj;
+  document.getElementById('tblGATotHe2').textContent = totals.he2;
+  document.getElementById('tblGATotTotal').textContent = totals.total;
 }
 
 function renderChartEvol(){
   const go = document.getElementById('goSel').value;
   const cycles = META.ciclos;
-  const totals = cycles.map(c => {
+  const rows = cycles.map((c, i) => {
     const recs = RECORDS.filter(r => r.ciclo_inicio===c.inicio && (!go || r.go===go));
-    if (!recs.length) return null;
     const s = sumFlags(recs);
-    return s.dias7+s.interj+s.he2;
+    const total = s.dias7+s.interj+s.he2;
+    return { label: c.label, dias7: s.dias7, interj: s.interj, he2: s.he2, total, temDados: recs.length > 0 };
   });
+
+  const totals = rows.map(r => r.temDados ? r.total : null);
   const labels = cycles.map(c=>c.label.split(' a ')[0]);
   if (chartEvol) chartEvol.destroy();
   chartEvol = new Chart(document.getElementById('chartEvol'), {
     type:'line',
-    data:{ labels, datasets:[{label:'Total de infrações', data: totals, spanGaps:false, borderColor:'#5b8def', backgroundColor:'rgba(91,141,239,.15)', fill:true, tension:.25, pointRadius:4}]},
+    data:{ labels, datasets:[{
+      label:'Total de infrações', data: totals, spanGaps:false,
+      borderColor:'#5b8def', backgroundColor:'rgba(91,141,239,.15)', fill:true, tension:.25, pointRadius:4,
+      datalabels: { color:'#e8ecf4', font:{size:11,weight:'700'}, align:'top', anchor:'end', formatter:(v)=> v===null?'':v.toLocaleString('pt-BR') },
+    }]},
     options:{responsive:true, maintainAspectRatio:false,
       scales:{x:{ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}, beginAtZero:true}},
       plugins:{legend:{labels:{color:'#e8ecf4'}}}
     }
   });
+
+  const tbodyEvol = document.querySelector('#tblEvol tbody');
+  tbodyEvol.innerHTML = rows.map((r, i) => {
+    const prev = rows[i-1];
+    let variacao = '-', avaliacao = 'Sem dados', avalClass = 'neutral';
+    if (r.temDados){
+      if (!prev || !prev.temDados){
+        avaliacao = 'Sem comparação';
+      } else {
+        const delta = r.total - prev.total;
+        variacao = (delta>0?'+':'') + delta.toLocaleString('pt-BR');
+        if (delta < 0){ avaliacao = '▼ Melhora'; avalClass = 'good'; }
+        else if (delta > 0){ avaliacao = '▲ Piora'; avalClass = 'bad'; }
+        else { avaliacao = '= Estável'; avalClass = 'neutral'; }
+      }
+    }
+    const cellsDados = r.temDados
+      ? `<td class="num">${r.dias7}</td><td class="num">${r.interj}</td><td class="num">${r.he2}</td><td class="num">${r.total}</td>`
+      : `<td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td>`;
+    return `<tr><td>${r.label}</td>${cellsDados}<td class="num">${variacao}</td><td><span class="badge ${avalClass}">${avaliacao}</span></td></tr>`;
+  }).join('');
 }
 
 let sortState = {k:'total', dir:-1};
