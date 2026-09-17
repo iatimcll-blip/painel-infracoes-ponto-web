@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Infrações de Ponto por GA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#171e2e; --panel2:#1d2436; --border:#2a3348;
+    --text:#e8ecf4; --muted:#98a2b8; --accent:#5b8def; --good:#3ecf8e;
+    --bad:#f2596b; --warn:#f2b94b; --neutral:#7a8399;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+  header{padding:20px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+  header h1{margin:0;font-size:1.35rem}
+  header p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
+  .container{max-width:1200px;margin:0 auto;padding:20px 24px 60px}
+  .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+  select,input,button{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:.9rem}
+  button{cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.primary:hover{opacity:.9}
+  button.ghost{background:transparent}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+  .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .kpi .label{color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+  .kpi .value{font-size:1.7rem;font-weight:700;margin-top:6px}
+  .kpi .sub{font-size:.8rem;color:var(--muted);margin-top:4px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600}
+  .badge.good{background:rgba(62,207,142,.15);color:var(--good)}
+  .badge.bad{background:rgba(242,89,107,.15);color:var(--bad)}
+  .badge.neutral{background:rgba(122,131,153,.15);color:var(--neutral)}
+  section{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:20px}
+  section h2{margin:0 0 4px;font-size:1.05rem}
+  section .desc{color:var(--muted);font-size:.82rem;margin-bottom:14px}
+  .chart-wrap{position:relative;height:320px}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+  th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;cursor:pointer;user-select:none}
+  tbody tr:hover{background:rgba(255,255,255,.03)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag-semdados{color:var(--neutral);font-style:italic}
+  .search{margin-bottom:10px}
+  .footer-note{color:var(--muted);font-size:.78rem;line-height:1.6;margin-top:8px}
+  .issues li{margin-bottom:8px;font-size:.85rem;color:var(--muted)}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:.78rem;color:var(--muted)}
+  a{color:var(--accent)}
+
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:360px}
+  .login-card h1{font-size:1.2rem;margin:0 0 4px}
+  .login-card p{color:var(--muted);font-size:.85rem;margin:0 0 20px}
+  .login-card label{display:block;font-size:.8rem;color:var(--muted);margin:14px 0 6px}
+  .login-card input{width:100%}
+  .login-card button{width:100%;margin-top:20px;padding:10px}
+  .login-error{color:var(--bad);font-size:.82rem;margin-top:10px;min-height:1.2em}
+  #app{display:none}
+  @media (max-width:600px){.container{padding:14px}}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <form class="login-card" id="loginForm">
+    <h1>📊 Painel de Infrações de Ponto</h1>
+    <p>Acesso restrito. Faça login com sua conta autorizada.</p>
+    <label for="email">Email</label>
+    <input type="email" id="email" required autocomplete="username">
+    <label for="password">Senha</label>
+    <input type="password" id="password" required autocomplete="current-password">
+    <button class="primary" type="submit">Entrar</button>
+    <div class="login-error" id="loginError"></div>
+  </form>
+</div>
+
+<div id="app">
+<header>
+  <div>
+    <h1>📊 Painel de Infrações de Ponto por GA</h1>
+    <p id="subtitle">carregando dados…</p>
+  </div>
+  <div>
+    <span class="pill" id="userEmail"></span>
+    <button class="ghost" id="logoutBtn">Sair</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="controls">
+    <label for="cicloSel" class="pill">Ciclo:</label>
+    <select id="cicloSel"></select>
+    <label for="goSel" class="pill">GO:</label>
+    <select id="goSel"><option value="">Todos</option></select>
+    <span class="pill" id="lastGenerated"></span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>Infrações por GO (Gestor Operacional)</h2>
+    <div class="desc">GO calculado a partir da hierarquia mais atual cadastrada.</div>
+    <div class="chart-wrap"><canvas id="chartGO"></canvas></div>
+  </section>
+
+  <section>
+    <h2>Infrações por GA (Gestor de Área)</h2>
+    <div class="desc">Barras empilhadas por tipo de infração no ciclo selecionado. GAs sem nenhum registro de ponto aparecem à parte na tabela abaixo como "sem dados".</div>
+    <div class="chart-wrap" style="height:420px"><canvas id="chartGA"></canvas></div>
+  </section>
+
+  <section>
+    <h2>Evolução por ciclo</h2>
+    <div class="desc">Histórico de todos os ciclos com dados na base. Ciclos sem nenhum registro não entram no cálculo de variação.</div>
+    <div class="chart-wrap"><canvas id="chartEvol"></canvas></div>
+  </section>
+
+  <section>
+    <h2>Resumo por colaborador</h2>
+    <div class="desc">Clique nos cabeçalhos para ordenar. Colaboradores sem nenhum registro de ponto no ciclo selecionado aparecem marcados como <span class="tag-semdados">sem dados</span> em vez de "0 infrações".</div>
+    <input class="search" id="searchBox" type="text" placeholder="Buscar colaborador, GA ou função…">
+    <div style="max-height:480px;overflow:auto">
+      <table id="tblColab">
+        <thead>
+          <tr>
+            <th data-k="nome">Colaborador</th>
+            <th data-k="ga">GA</th>
+            <th data-k="go">GO</th>
+            <th data-k="registros" class="num">Registros</th>
+            <th data-k="dias7" class="num">&gt;7 dias trab.</th>
+            <th data-k="interj" class="num">Interjornada</th>
+            <th data-k="he2" class="num">&gt;2h extras</th>
+            <th data-k="total" class="num">Total</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sobre este painel</h2>
+    <ul class="issues" id="issuesList"></ul>
+    <div class="footer-note">
+      Acesso protegido por login (Supabase Auth) e por Row Level Security no banco — os dados só ficam visíveis para contas autorizadas.
+    </div>
+  </section>
+
+</div>
+</div>
+
+<script>
+// Publishable key: segura para uso no front-end (não dá acesso a nada sem
+// login válido, pois todas as tabelas têm RLS restrito a "authenticated").
+const SUPABASE_URL = "https://ymltjceiviyadckxzbxw.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xekNQuBKCxGqMSO8uv20UQ_gK87DXPh";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+let RECORDS = [], ROSTER = [], GOMAP = {}, META = {};
+
+async function checkSession(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (session){
+    showApp(session);
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin(){
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+async function showApp(session){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('userEmail').textContent = session.user.email;
+  await loadData();
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const errBox = document.getElementById('loginError');
+  errBox.textContent = '';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error){
+    errBox.textContent = 'Login inválido. Verifique email e senha.';
+    return;
+  }
+  showApp(data.session);
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  location.reload();
+});
+
+async function loadData(){
+  const [regRes, rosterRes, goRes, metaRes] = await Promise.all([
+    sb.from('infracoes_registros').select('*'),
+    sb.from('infracoes_roster').select('*'),
+    sb.from('infracoes_go_map').select('*'),
+    sb.from('infracoes_meta').select('*').eq('chave','meta').single(),
+  ]);
+  if (regRes.error || rosterRes.error || goRes.error || metaRes.error){
+    document.getElementById('subtitle').textContent = 'Erro ao carregar dados. Tente novamente.';
+    console.error(regRes.error || rosterRes.error || goRes.error || metaRes.error);
+    return;
+  }
+  RECORDS = regRes.data;
+  ROSTER = rosterRes.data;
+  GOMAP = {}; goRes.data.forEach(x => GOMAP[x.ga] = x.go);
+  META = metaRes.data.valor;
+  ROSTER.forEach(r => { if(!r.go) r.go = GOMAP[r.ga] || null; });
+  init();
+}
+
+function fmtNum(n){ return n.toLocaleString('pt-BR'); }
+
+function buildCycleOptions(){
+  const sel = document.getElementById('cicloSel');
+  sel.innerHTML = '';
+  const optAll = document.createElement('option');
+  optAll.value = ''; optAll.textContent = 'TODOS OS CICLOS';
+  sel.appendChild(optAll);
+  META.ciclos.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.inicio; o.textContent = c.label;
+    sel.appendChild(o);
+  });
+  sel.value = META.ciclos.length ? META.ciclos[META.ciclos.length-1].inicio : '';
+}
+
+function buildGoOptions(){
+  const sel = document.getElementById('goSel');
+  sel.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());
+  const gos = [...new Set(Object.values(GOMAP).filter(Boolean))].sort();
+  gos.forEach(go => {
+    const o = document.createElement('option');
+    o.value = go; o.textContent = go;
+    sel.appendChild(o);
+  });
+}
+
+function filteredRecords(){
+  const ciclo = document.getElementById('cicloSel').value;
+  const go = document.getElementById('goSel').value;
+  return RECORDS.filter(r => {
+    if (ciclo && r.ciclo_inicio !== ciclo) return false;
+    if (go && r.go !== go) return false;
+    return true;
+  });
+}
+
+function previousCycleStart(ciclo){
+  const idx = META.ciclos.findIndex(c => c.inicio === ciclo);
+  if (idx <= 0) return null;
+  return META.ciclos[idx-1].inicio;
+}
+
+function sumFlags(recs){
+  return recs.reduce((acc,r) => {
+    acc.dias7 += r.dias7; acc.interj += r.interj; acc.he2 += r.he2;
+    return acc;
+  }, {dias7:0, interj:0, he2:0});
+}
+
+function renderKPIs(){
+  const ciclo = document.getElementById('cicloSel').value;
+  const cur = filteredRecords();
+  const curSum = sumFlags(cur);
+  const curTotal = curSum.dias7 + curSum.interj + curSum.he2;
+
+  let prevTotal = null, delta = null;
+  if (ciclo){
+    const prevCiclo = previousCycleStart(ciclo);
+    if (prevCiclo){
+      const go = document.getElementById('goSel').value;
+      const prevRecs = RECORDS.filter(r => r.ciclo_inicio === prevCiclo && (!go || r.go===go));
+      if (prevRecs.length){
+        const s = sumFlags(prevRecs);
+        prevTotal = s.dias7+s.interj+s.he2;
+        delta = curTotal - prevTotal;
+      }
+    }
+  }
+
+  const tipos = [['>7 dias trabalhados', curSum.dias7], ['Interjornada', curSum.interj], ['>2 horas extras', curSum.he2]];
+  tipos.sort((a,b)=>b[1]-a[1]);
+  const tipoMaisRecorrente = tipos[0][1] > 0 ? tipos[0][0] : '-';
+
+  const kpis = document.getElementById('kpis');
+  kpis.innerHTML = '';
+
+  const cards = [
+    {label:'Total de infrações', value: fmtNum(curTotal), sub: cur.length + ' registro(s) no filtro'},
+    {label:'Ciclo anterior', value: prevTotal===null ? '-' : fmtNum(prevTotal), sub: ciclo ? '' : 'selecione um ciclo específico'},
+    {label:'Variação vs. anterior', value: delta===null ? '-' : (delta>0?'+':'')+fmtNum(delta),
+      sub: delta===null ? 'sem comparação válida' : (delta>0?'piora':delta<0?'melhora':'estável'),
+      badge: delta===null?null:(delta>0?'bad':delta<0?'good':'neutral')},
+    {label:'Tipo mais recorrente', value: tipoMaisRecorrente, sub:''},
+  ];
+  cards.forEach(c => {
+    const div = document.createElement('div');
+    div.className='kpi';
+    div.innerHTML = `<div class="label">${c.label}</div><div class="value">${c.value}</div><div class="sub">${c.badge? `<span class="badge ${c.badge}">${c.sub}</span>` : c.sub}</div>`;
+    kpis.appendChild(div);
+  });
+}
+
+let chartGO, chartGA, chartEvol;
+
+function renderChartGO(){
+  const recs = filteredRecords();
+  const byGO = {};
+  recs.forEach(r => {
+    const go = r.go || 'SEM GO DEFINIDO';
+    if (!byGO[go]) byGO[go] = {dias7:0,interj:0,he2:0};
+    byGO[go].dias7 += r.dias7; byGO[go].interj += r.interj; byGO[go].he2 += r.he2;
+  });
+  const labels = Object.keys(byGO).sort((a,b)=> (byGO[b].dias7+byGO[b].interj+byGO[b].he2) - (byGO[a].dias7+byGO[a].interj+byGO[a].he2));
+  const ds = (key,label,color) => ({label, backgroundColor:color, data: labels.map(l=>byGO[l][key])});
+  const data = {
+    labels,
+    datasets: [
+      ds('dias7','>7 dias trab.', '#f2b94b'),
+      ds('interj','Interjornada', '#5b8def'),
+      ds('he2','>2h extras', '#f2596b'),
+    ]
+  };
+  if (chartGO) chartGO.destroy();
+  chartGO = new Chart(document.getElementById('chartGO'), {
+    type:'bar',
+    data,
+    options:{responsive:true, maintainAspectRatio:false,
+      scales:{x:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}},
+      plugins:{legend:{labels:{color:'#e8ecf4'}}}
+    }
+  });
+}
+
+function renderChartGA(){
+  const recs = filteredRecords();
+  const byGA = {};
+  recs.forEach(r => {
+    if (!byGA[r.ga]) byGA[r.ga] = {dias7:0,interj:0,he2:0};
+    byGA[r.ga].dias7 += r.dias7; byGA[r.ga].interj += r.interj; byGA[r.ga].he2 += r.he2;
+  });
+  const goFilter = document.getElementById('goSel').value;
+  const rosterGAs = [...new Set(ROSTER.filter(r=>!goFilter || r.go===goFilter).map(r=>r.ga))];
+  rosterGAs.forEach(ga => { if(!byGA[ga]) byGA[ga] = {dias7:0,interj:0,he2:0,semdados:true}; });
+
+  const labels = Object.keys(byGA).sort((a,b)=> (byGA[b].dias7+byGA[b].interj+byGA[b].he2) - (byGA[a].dias7+byGA[a].interj+byGA[a].he2));
+  const ds = (key,label,color) => ({label, backgroundColor:color, data: labels.map(l=>byGA[l][key])});
+  const data = {
+    labels,
+    datasets: [
+      ds('dias7','>7 dias trab.', '#f2b94b'),
+      ds('interj','Interjornada', '#5b8def'),
+      ds('he2','>2h extras', '#f2596b'),
+    ]
+  };
+  if (chartGA) chartGA.destroy();
+  chartGA = new Chart(document.getElementById('chartGA'), {
+    type:'bar',
+    data,
+    options:{responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      scales:{x:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'transparent'}}},
+      plugins:{legend:{labels:{color:'#e8ecf4'}}}
+    }
+  });
+}
+
+function renderChartEvol(){
+  const go = document.getElementById('goSel').value;
+  const cycles = META.ciclos;
+  const totals = cycles.map(c => {
+    const recs = RECORDS.filter(r => r.ciclo_inicio===c.inicio && (!go || r.go===go));
+    if (!recs.length) return null;
+    const s = sumFlags(recs);
+    return s.dias7+s.interj+s.he2;
+  });
+  const labels = cycles.map(c=>c.label.split(' a ')[0]);
+  if (chartEvol) chartEvol.destroy();
+  chartEvol = new Chart(document.getElementById('chartEvol'), {
+    type:'line',
+    data:{ labels, datasets:[{label:'Total de infrações', data: totals, spanGaps:false, borderColor:'#5b8def', backgroundColor:'rgba(91,141,239,.15)', fill:true, tension:.25, pointRadius:4}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      scales:{x:{ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}, beginAtZero:true}},
+      plugins:{legend:{labels:{color:'#e8ecf4'}}}
+    }
+  });
+}
+
+let sortState = {k:'total', dir:-1};
+
+function buildColabRows(){
+  const go = document.getElementById('goSel').value;
+  const recs = filteredRecords();
+  const byNome = {};
+  recs.forEach(r => {
+    if (!byNome[r.nome]) byNome[r.nome] = {nome:r.nome, ga:r.ga, go:r.go, registros:0, dias7:0, interj:0, he2:0};
+    const e = byNome[r.nome];
+    e.registros++; e.dias7 += r.dias7; e.interj += r.interj; e.he2 += r.he2;
+  });
+  ROSTER.filter(r => !go || r.go===go).forEach(r => {
+    if (!byNome[r.nome]) byNome[r.nome] = {nome:r.nome, ga:r.ga, go:r.go, registros:0, dias7:0, interj:0, he2:0};
+  });
+  return Object.values(byNome).map(e => ({...e, total: e.dias7+e.interj+e.he2}));
+}
+
+function renderTable(){
+  const rows = buildColabRows();
+  const q = document.getElementById('searchBox').value.trim().toLowerCase();
+  let filtered = rows.filter(r => !q || r.nome.toLowerCase().includes(q) || (r.ga||'').toLowerCase().includes(q));
+  filtered.sort((a,b) => {
+    const {k,dir} = sortState;
+    if (typeof a[k] === 'string') return dir * a[k].localeCompare(b[k]);
+    return dir * ((a[k]??0) - (b[k]??0));
+  });
+  const tbody = document.querySelector('#tblColab tbody');
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td>${r.nome}</td>
+      <td>${r.ga||'-'}</td>
+      <td>${r.go||'-'}</td>
+      <td class="num">${r.registros}</td>
+      ${r.registros===0
+        ? `<td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">sem dados</td>`
+        : `<td class="num">${r.dias7}</td><td class="num">${r.interj}</td><td class="num">${r.he2}</td><td class="num">${r.total}</td>`}
+    </tr>
+  `).join('');
+}
+
+function renderAll(){
+  renderKPIs();
+  renderChartGO();
+  renderChartGA();
+  renderChartEvol();
+  renderTable();
+}
+
+function renderIssues(){
+  const ul = document.getElementById('issuesList');
+  ul.innerHTML = (META.inconsistencias_corrigidas||[]).map(t => `<li>${t}</li>`).join('');
+  document.getElementById('lastGenerated').textContent = 'Dados gerados em ' + META.gerado_em;
+  document.getElementById('subtitle').textContent =
+    `${META.total_registros.toLocaleString('pt-BR')} registros de ponto · ${META.colaboradores_com_registro} colaboradores com dados de ${META.colaboradores_no_roster} no roster`;
+}
+
+let initialized = false;
+function init(){
+  buildCycleOptions();
+  buildGoOptions();
+  renderIssues();
+  renderAll();
+
+  if (!initialized){
+    document.getElementById('cicloSel').addEventListener('change', renderAll);
+    document.getElementById('goSel').addEventListener('change', renderAll);
+    document.getElementById('searchBox').addEventListener('input', renderTable);
+    document.querySelectorAll('#tblColab th').forEach(th => {
+      th.addEventListener('click', () => {
+        const k = th.dataset.k;
+        sortState = {k, dir: sortState.k===k ? -sortState.dir : -1};
+        renderTable();
+      });
+    });
+    initialized = true;
+  }
+}
+
+checkSession();
+</script>
+</body>
+</html>
