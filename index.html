@@ -240,7 +240,11 @@
 
   <section>
     <h2>Resumo por colaborador</h2>
-    <div class="desc">Clique nos cabeçalhos para ordenar. Colaboradores sem nenhum registro de ponto no ciclo selecionado aparecem marcados como <span class="tag-semdados">sem dados</span> em vez de "0 infrações".</div>
+    <div class="desc">Clique nos cabeçalhos para ordenar. Colaboradores sem nenhum registro de ponto no ciclo selecionado aparecem marcados como <span class="tag-semdados">sem dados</span> em vez de "0 infrações". Selecione um GA para ver todos os colaboradores dele na hierarquia, mesmo os sem registro.</div>
+    <div class="controls" style="margin-bottom:12px">
+      <label for="colabGaSel" class="pill">GA:</label>
+      <select id="colabGaSel"><option value="">Todos</option></select>
+    </div>
     <input class="search" id="searchBox" type="text" placeholder="Buscar colaborador, GA ou função…">
     <div style="max-height:480px;overflow:auto">
       <table id="tblColab">
@@ -426,6 +430,20 @@ function buildGoOptions(){
     o.value = go; o.textContent = go;
     sel.appendChild(o);
   });
+}
+
+function buildColabGaOptions(){
+  const sel = document.getElementById('colabGaSel');
+  const prev = sel.value;
+  sel.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());
+  const goFilter = document.getElementById('goSel').value;
+  const gas = [...new Set(ROSTER.filter(r => !goFilter || r.go === goFilter).map(r => r.ga))].sort();
+  gas.forEach(ga => {
+    const o = document.createElement('option');
+    o.value = ga; o.textContent = ga;
+    sel.appendChild(o);
+  });
+  if (gas.includes(prev)) sel.value = prev;
 }
 
 function filteredRecords(){
@@ -634,14 +652,17 @@ let sortState = {k:'total', dir:-1};
 
 function buildColabRows(){
   const go = document.getElementById('goSel').value;
-  const recs = filteredRecords();
+  const ga = document.getElementById('colabGaSel').value;
+  const recs = filteredRecords().filter(r => !ga || r.ga === ga);
   const byNome = {};
   recs.forEach(r => {
     if (!byNome[r.nome]) byNome[r.nome] = {nome:r.nome, ga:r.ga, go:r.go, registros:0, dias7:0, interj:0, he2:0};
     const e = byNome[r.nome];
     e.registros++; e.dias7 += r.dias7; e.interj += r.interj; e.he2 += r.he2;
   });
-  ROSTER.filter(r => !go || r.go===go).forEach(r => {
+  // Sempre inclui todo o roster do GA selecionado (ou de todos, se nenhum
+  // GA escolhido), mesmo quem não tem nenhum registro no ciclo/GO atual.
+  ROSTER.filter(r => (!go || r.go===go) && (!ga || r.ga===ga)).forEach(r => {
     if (!byNome[r.nome]) byNome[r.nome] = {nome:r.nome, ga:r.ga, go:r.go, registros:0, dias7:0, interj:0, he2:0};
   });
   return Object.values(byNome).map(e => ({...e, total: e.dias7+e.interj+e.he2}));
@@ -916,12 +937,17 @@ let initialized = false;
 function init(){
   buildCycleOptions();
   buildGoOptions();
+  buildColabGaOptions();
   renderIssues();
   renderAll();
 
   if (!initialized){
     document.getElementById('cicloSel').addEventListener('change', renderAll);
-    document.getElementById('goSel').addEventListener('change', renderAll);
+    document.getElementById('goSel').addEventListener('change', () => {
+      buildColabGaOptions();
+      renderAll();
+    });
+    document.getElementById('colabGaSel').addEventListener('change', renderTable);
     document.getElementById('searchBox').addEventListener('input', renderTable);
     document.querySelectorAll('#tblColab th').forEach(th => {
       th.addEventListener('click', () => {
