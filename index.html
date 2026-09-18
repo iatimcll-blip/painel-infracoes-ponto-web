@@ -1708,15 +1708,24 @@ async function importFile(file){
   const NOME_TO_GA = {};
   ROSTER.forEach(r => { if (r.nome && r.ga) NOME_TO_GA[r.nome] = r.ga; });
 
-  let gaResolvidosPeloRoster = 0;
+  // GA e GO são sempre compatibilizados com a hierarquia já cadastrada
+  // (roster), casando por nome do colaborador: se a pessoa está na
+  // hierarquia, o GA de lá prevalece sobre o que vier no arquivo (mesmo
+  // que o arquivo pareça "válido" mas esteja desatualizado). Só usa o GA
+  // do arquivo quando a pessoa não está na hierarquia.
+  let gaCompatibilizados = 0;
   const newRecords = rows
     .filter(r => strOrNull(r[H.funcid]) !== null)
     .map(r => {
       const nome = strOrNull(r[H.nome]);
-      let ga = strOrNull(r[H.ga]);
-      if (isBadLookup(ga)){
-        const fallbackGa = NOME_TO_GA[nome];
-        if (fallbackGa){ ga = fallbackGa; gaResolvidosPeloRoster++; }
+      const gaArquivo = strOrNull(r[H.ga]);
+      const gaHierarquia = NOME_TO_GA[nome];
+      let ga;
+      if (gaHierarquia){
+        ga = gaHierarquia;
+        if (gaArquivo !== gaHierarquia) gaCompatibilizados++;
+      } else {
+        ga = isBadLookup(gaArquivo) ? null : gaArquivo;
       }
       let go = GOMAP[ga] || strOrNull(r[H.go]);
       if (isBadLookup(go)) go = GOMAP[ga] || null;
@@ -1746,8 +1755,8 @@ async function importFile(file){
     return;
   }
 
-  const avisoGa = gaResolvidosPeloRoster > 0
-    ? `\n\nAviso: ${gaResolvidosPeloRoster} linha(s) vieram com GA não resolvido no arquivo (ex.: "NAO ENCONTRADO") e foram corrigidas automaticamente usando a hierarquia já cadastrada, por nome do colaborador.`
+  const avisoGa = gaCompatibilizados > 0
+    ? `\n\nAviso: ${gaCompatibilizados} linha(s) tinham GA diferente do cadastrado na hierarquia (ou "NAO ENCONTRADO") e foram compatibilizadas automaticamente com a base de hierarquia, por nome do colaborador.`
     : '';
   const proceed = confirm(`Isso vai substituir os ${RECORDS.length} registro(s) atuais por ${newRecords.length} novo(s) registro(s) do arquivo "${file.name}".${avisoGa}\n\nContinuar?`);
   if (!proceed){
