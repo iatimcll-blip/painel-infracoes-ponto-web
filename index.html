@@ -87,12 +87,6 @@
     padding:12px 22px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; box-shadow:var(--shadow);
   }
   .filter-label{font-size:.76rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-right:2px}
-  .pill-row{display:flex;gap:6px;flex-wrap:wrap;overflow-x:auto;max-width:100%}
-  .cycle-pill{
-    border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:999px;
-    padding:6px 14px; font-size:.82rem; white-space:nowrap; font-weight:600;
-  }
-  .cycle-pill.active{background:var(--navy); border-color:var(--navy); color:#fff}
   .active-cycle-badge{
     background:rgba(20,118,201,.1); color:var(--blue); border:1px solid rgba(20,118,201,.3);
     border-radius:999px; padding:6px 14px; font-size:.8rem; font-weight:700;
@@ -362,8 +356,7 @@
 
 <div class="filter-bar">
   <span class="filter-label">Ciclo</span>
-  <select id="cicloSel" hidden></select>
-  <div class="pill-row" id="cicloPills"></div>
+  <select id="cicloSel"></select>
   <span class="filter-label">GO</span>
   <select id="goSel"><option value="">Todos</option></select>
   <span class="filter-label">Semana</span>
@@ -417,13 +410,13 @@
 
   <section>
     <h2>Semana atual vs. semana anterior</h2>
-    <div class="desc">Compara os dois últimos períodos de 7 dias com dados na base (respeita o filtro de GO). Independe do ciclo/semana selecionado acima.</div>
+    <div class="desc">Compara os dois últimos períodos de 7 dias com dados dentro do ciclo e GO selecionados acima.</div>
     <div class="kpis" id="weekCompareKpis"></div>
   </section>
 
   <section>
     <h2>🏆 Ranking</h2>
-    <div class="desc">GAs que reduziram infrações na semana atual vs. a anterior (respeita só o filtro de GO, igual ao bloco acima). Abaixo de cada um, quais tipos de infração caíram.</div>
+    <div class="desc">GAs que reduziram infrações na semana atual vs. a anterior, dentro do ciclo e GO selecionados acima. Abaixo de cada um, quais tipos de infração caíram.</div>
     <div class="criticidade-rule">
       <b>Grau de criticidade (usado para ordenar o ranking, além do número de redução):</b>
       &gt;7 dias trab. = peso 7 · Interjornada = peso 3,5 · &gt;2h extras = peso 3
@@ -500,13 +493,13 @@
       <h4>Gráfico dos KPIs</h4>
       <div class="chart-wrap" style="height:260px;margin-bottom:24px"><canvas id="reportKpiChart"></canvas></div>
 
-      <h4>Mês a mês (histórico completo)</h4>
+      <h4>Mês a mês</h4>
       <table class="chart-table" id="reportTblMes">
         <thead><tr><th>Mês</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr></thead>
         <tbody></tbody>
       </table>
 
-      <h4>Semana a semana (histórico completo)</h4>
+      <h4>Semana a semana</h4>
       <table class="chart-table" id="reportTblSemana">
         <thead><tr><th>Semana</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr></thead>
         <tbody></tbody>
@@ -717,25 +710,6 @@ function buildCycleOptions(){
     sel.appendChild(o);
   });
   sel.value = META.ciclos.length ? META.ciclos[META.ciclos.length-1].inicio : '';
-  renderCyclePills();
-}
-
-function renderCyclePills(){
-  const sel = document.getElementById('cicloSel');
-  const wrap = document.getElementById('cicloPills');
-  wrap.innerHTML = '';
-  Array.from(sel.options).forEach(opt => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cycle-pill' + (opt.value === sel.value ? ' active' : '');
-    btn.textContent = opt.textContent;
-    btn.addEventListener('click', () => {
-      if (sel.value === opt.value) return;
-      sel.value = opt.value;
-      sel.dispatchEvent(new Event('change'));
-    });
-    wrap.appendChild(btn);
-  });
 }
 
 function updateActiveCycleBadge(){
@@ -1120,7 +1094,6 @@ function renderTable(){
 }
 
 function renderAll(){
-  renderCyclePills();
   updateActiveCycleBadge();
   renderKPIs();
   renderChartGO();
@@ -1233,9 +1206,16 @@ async function copyBlockAsImage(targetId, btn){
 // Sempre olha as duas últimas semanas com dado em TODA a base (só
 // respeita o filtro de GO), independente do ciclo/semana selecionados.
 
-function renderWeekCompare(){
+// Registros filtrados por Ciclo + GO (sem o filtro de Semana, que não faz
+// sentido pros blocos que calculam sua própria janela de semanas).
+function scopedByCicloGo(){
+  const ciclo = document.getElementById('cicloSel').value;
   const go = document.getElementById('goSel').value;
-  const scoped = RECORDS.filter(r => !go || r.go === go);
+  return RECORDS.filter(r => (!ciclo || r.ciclo_inicio === ciclo) && (!go || r.go === go));
+}
+
+function renderWeekCompare(){
+  const scoped = scopedByCicloGo();
   const weeks = [...new Set(scoped.map(r => weekStartISO(r.data)))].sort();
   const atual = weeks[weeks.length - 1];
   const anterior = weeks[weeks.length - 2];
@@ -1261,7 +1241,6 @@ function renderWeekCompare(){
 // ---------- Ranking: GAs sem infrações / GAs que reduziram na semana ----------
 
 function renderRanking(){
-  const go = document.getElementById('goSel').value;
   const medals = ['🥇','🥈','🥉'];
   const TIPO_INFO = {
     dias7: { label:'>7 dias trab.', color:COLORS.dias7, bg:'rgba(20,118,201,.12)', border:'rgba(20,118,201,.35)' },
@@ -1269,10 +1248,10 @@ function renderRanking(){
     he2: { label:'>2h extras', color:COLORS.he2, bg:'rgba(66,195,75,.12)', border:'rgba(66,195,75,.35)' },
   };
 
-  // GAs que reduziram infrações: semana atual vs. anterior (só respeita GO,
-  // igual ao bloco "Semana atual vs. semana anterior" acima). Guarda os 3
-  // tipos separados pra saber quais caíram em cada GA.
-  const scoped = RECORDS.filter(r => !go || r.go === go);
+  // GAs que reduziram infrações: semana atual vs. anterior, dentro do
+  // ciclo e GO selecionados acima. Guarda os 3 tipos separados pra saber
+  // quais caíram em cada GA.
+  const scoped = scopedByCicloGo();
   const weeks = [...new Set(scoped.map(r => weekStartISO(r.data)))].sort();
   const atual = weeks[weeks.length-1], anterior = weeks[weeks.length-2];
   const elRed = document.getElementById('rankingReduziram');
@@ -1421,10 +1400,9 @@ function renderReport(){
     `<tr><td>${r.ga}</td>${numCell(r.t)}<td class="num">${r.pct}%</td></tr>`
   ).join('') || `<tr><td colspan="3" class="tag-semdados">Sem infrações no filtro atual.</td></tr>`;
 
-  // Mês a mês e semana a semana: histórico completo, só respeitando o
-  // filtro de GO (não o ciclo/semana selecionados, pra dar visão de
-  // tendência de verdade no relatório).
-  const scoped = RECORDS.filter(r => !go || r.go === go);
+  // Mês a mês e semana a semana: dentro do ciclo e GO selecionados acima,
+  // igual ao resto do painel.
+  const scoped = scopedByCicloGo();
 
   const byMes = {};
   scoped.forEach(r => {
