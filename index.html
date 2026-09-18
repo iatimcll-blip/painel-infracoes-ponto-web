@@ -73,6 +73,8 @@
   .stack-form label{display:block;font-size:.78rem;color:var(--muted);margin:10px 0 4px}
   .stack-form input{width:100%}
   .stack-form button{width:100%;margin-top:12px}
+  .status-msg.ok{color:var(--green)}
+  .status-msg.error{color:var(--red)}
 
   .avatar-btn{
     width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
@@ -336,6 +338,15 @@
       <button class="avatar-btn" id="avatarBtn" title="Sua conta"></button>
       <div class="menu-popover" id="avatarMenu" style="right:0;width:280px">
         <div id="avatarEmail"></div>
+        <hr>
+        <h3>Perfil</h3>
+        <div class="desc" style="margin-bottom:8px">Nome exibido no lugar do email e usado para as iniciais do avatar.</div>
+        <form class="stack-form" id="profileForm">
+          <label for="profileName">Nome de exibição</label>
+          <input type="text" id="profileName" placeholder="Seu nome">
+          <button class="btn-navy" type="submit">Salvar</button>
+        </form>
+        <div class="status-msg" id="profileStatus" style="font-size:.8rem;margin-top:8px"></div>
         <div id="avatarAdminSection" style="display:none">
           <hr>
           <h3>Gerenciar acessos</h3>
@@ -625,13 +636,25 @@ function showLogin(){
   document.getElementById('app').style.display = 'none';
 }
 
+function initialsFrom(nameOrEmail){
+  const parts = nameOrEmail.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return nameOrEmail.slice(0, 2).toUpperCase();
+}
+
+function applyProfileDisplay(user){
+  const email = user.email;
+  const fullName = (user.user_metadata && user.user_metadata.full_name) || '';
+  document.getElementById('avatarEmail').textContent = fullName ? `${fullName} · ${email}` : email;
+  document.getElementById('avatarBtn').textContent = initialsFrom(fullName || email);
+  document.getElementById('profileName').value = fullName;
+}
+
 async function showApp(session){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  const email = session.user.email;
-  document.getElementById('avatarEmail').textContent = email;
-  document.getElementById('avatarBtn').textContent = email.slice(0,2).toUpperCase();
-  document.getElementById('avatarAdminSection').style.display = ADMIN_EMAILS.includes(email) ? 'block' : 'none';
+  applyProfileDisplay(session.user);
+  document.getElementById('avatarAdminSection').style.display = ADMIN_EMAILS.includes(session.user.email) ? 'block' : 'none';
   await loadData();
 }
 
@@ -1886,6 +1909,25 @@ document.getElementById('hierImportBtn').addEventListener('click', async () => {
   input.value = '';
   document.getElementById('hierMenu').classList.remove('open');
   await loadData();
+});
+
+// ---------- Perfil ----------
+
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const nome = document.getElementById('profileName').value.trim();
+  const statusBox = document.getElementById('profileStatus');
+  statusBox.className = 'status-msg';
+  statusBox.textContent = 'Salvando…';
+  const { data, error } = await sb.auth.updateUser({ data: { full_name: nome } });
+  if (error){
+    statusBox.className = 'status-msg error';
+    statusBox.textContent = 'Erro ao salvar: ' + error.message;
+    return;
+  }
+  applyProfileDisplay(data.user);
+  statusBox.className = 'status-msg ok';
+  statusBox.textContent = 'Perfil atualizado.';
 });
 
 // ---------- Gerenciar acessos ----------
