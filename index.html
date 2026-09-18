@@ -11,129 +11,71 @@
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
   :root{
-    --bg:#0f1420; --panel:#1c1f26; --panel2:#26292f; --border:rgba(255,255,255,.09);
-    --text:#f0f1f3; --muted:#98a0ac; --accent:#0a84ff; --good:#32d74b;
-    --bad:#ff453a; --warn:#ffd60a; --neutral:#8e8e93;
-    --radius:12px; --radius-lg:16px;
+    --navy:#182238; --green:#42C34B; --blue:#1476C9; --red:#E0483F;
+    --bg:#F2F4F7; --card:#FFFFFF; --text:#1A2233; --muted:#5B6472;
+    --border:#E2E6EC; --radius:12px; --radius-lg:14px;
+    --shadow:0 2px 10px rgba(24,34,56,.08); --shadow-lg:0 16px 40px rgba(24,34,56,.16);
+    --navy-text:#FFFFFF;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F1420; --card:#1B2030; --text:#EDEFF4; --muted:#9AA3B7;
+      --border:rgba(255,255,255,.09); --shadow:0 2px 10px rgba(0,0,0,.4);
+      --shadow-lg:0 20px 50px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F1420; --card:#1B2030; --text:#EDEFF4; --muted:#9AA3B7;
+    --border:rgba(255,255,255,.09); --shadow:0 2px 10px rgba(0,0,0,.4);
+    --shadow-lg:0 20px 50px rgba(0,0,0,.55);
   }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0;color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI",Roboto,Arial,sans-serif;
+    margin:0;color:var(--text);background:var(--bg);
+    font-family:Calibri,"Segoe UI",Roboto,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
-    background:#0d1017;
   }
   ::-webkit-scrollbar{width:10px;height:10px}
-  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:10px;border:2px solid transparent;background-clip:content-box}
-  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.26);background-clip:content-box}
+  ::-webkit-scrollbar-thumb{background:rgba(24,34,56,.22);border-radius:10px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(24,34,56,.35);background-clip:content-box}
   ::-webkit-scrollbar-track{background:transparent}
 
-  /* ---------- janela estilo macOS, ocupando a página inteira ---------- */
-  .mac-window{
-    width:100vw; height:100vh;
-    background:var(--bg); overflow:hidden;
-    display:flex; flex-direction:column;
-  }
-  .mac-titlebar{
-    flex:0 0 auto; height:40px; display:flex; align-items:center; position:relative;
-    padding:0 14px; gap:8px;
-    background:linear-gradient(#24272e,#1b1e24);
-    border-bottom:1px solid rgba(255,255,255,.07);
-    -webkit-app-region:drag;
-  }
-  .mac-titlebar .dot{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.25)}
-  .mac-titlebar .dot.red{background:#ff5f57}
-  .mac-titlebar .dot.yellow{background:#febc2e}
-  .mac-titlebar .dot.green{background:#28c840}
-  .mac-title{
-    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    font-size:13px; font-weight:600; color:#9aa0ab; letter-spacing:.01em;
-  }
-  .mac-body{flex:1 1 auto; overflow-y:auto; overflow-x:hidden; position:relative}
-
-  header{
-    padding:18px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;
-    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;
-    background:rgba(28,31,38,.78); backdrop-filter:blur(20px) saturate(1.6); -webkit-backdrop-filter:blur(20px) saturate(1.6);
-  }
-  header h1{margin:0;font-size:1.3rem;letter-spacing:-.01em}
-  header p{margin:4px 0 0;color:var(--muted);font-size:.85rem}
-  .container{max-width:1440px;margin:0 auto;padding:22px 24px 60px}
-  #loadErrorBanner{
-    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
-    margin:16px 24px 0; padding:12px 16px; border-radius:10px;
-    background:rgba(255,69,58,.12); border:1px solid rgba(255,69,58,.35); color:#ffb4af; font-size:.85rem;
-  }
-  .chart-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:14px}
-  .chart-table th,.chart-table td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
-  .chart-table th{color:var(--muted);font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em}
-  .chart-table td.num,.chart-table th.num{text-align:right;font-variant-numeric:tabular-nums}
-  .chart-table tbody tr:hover{background:rgba(255,255,255,.04)}
-  .chart-table tfoot td{font-weight:700;border-top:1px solid var(--border);border-bottom:none}
-  .table-wrap{max-height:320px;overflow:auto}
-  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:22px}
-  select,input,button{
-    background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:9px;
-    padding:8px 12px;font-size:.9rem;font-family:inherit;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
-  }
-  select:focus,input:focus{outline:2px solid rgba(10,132,255,.5);outline-offset:1px}
-  button{cursor:pointer;transition:filter .15s,transform .05s}
+  a{color:var(--blue)}
+  button{cursor:pointer;font-family:inherit;transition:filter .15s,transform .05s,background .15s}
   button:active{transform:translateY(1px)}
-  button.primary{background:linear-gradient(#1a91ff,var(--accent));border-color:var(--accent);color:#fff;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.3)}
-  button.primary:hover{filter:brightness(1.08)}
-  button.ghost{background:transparent}
-  button.ghost:hover{background:rgba(255,255,255,.06)}
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
-  .kpi{
-    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0)) , var(--panel);
-    border:1px solid var(--border);border-radius:var(--radius);padding:16px;
-    box-shadow:0 1px 2px rgba(0,0,0,.25);
+  select,input{
+    background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:9px;
+    padding:8px 12px;font-size:.9rem;font-family:inherit;
   }
-  .kpi .label{color:var(--muted);font-size:.76rem;text-transform:uppercase;letter-spacing:.05em}
-  .kpi .value{font-size:1.7rem;font-weight:700;margin-top:6px;letter-spacing:-.01em}
-  .kpi .sub{font-size:.8rem;color:var(--muted);margin-top:4px}
-  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:600}
-  .badge.good{background:rgba(50,215,75,.15);color:var(--good)}
-  .badge.bad{background:rgba(255,69,58,.15);color:var(--bad)}
-  .badge.neutral{background:rgba(142,142,147,.18);color:var(--neutral)}
-  section{
-    background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0)), var(--panel);
-    border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:18px;
-    box-shadow:0 1px 2px rgba(0,0,0,.2);
-  }
-  section h2{margin:0 0 4px;font-size:1.02rem;letter-spacing:-.005em}
-  section .desc{color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.5}
-  .chart-wrap{position:relative;height:320px}
-  table{width:100%;border-collapse:collapse;font-size:.85rem}
-  th,td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border)}
-  th{color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel)}
-  tbody tr{transition:background .1s}
-  tbody tr:hover{background:rgba(255,255,255,.045)}
-  .num{text-align:right;font-variant-numeric:tabular-nums}
-  .tag-semdados{color:var(--neutral);font-style:italic}
-  .search{margin-bottom:10px}
-  .footer-note{color:var(--muted);font-size:.78rem;line-height:1.6;margin-top:8px}
-  .issues li{margin-bottom:8px;font-size:.85rem;color:var(--muted)}
-  .pill{
-    display:inline-flex;align-items:center;gap:6px;background:var(--panel2);
-    border:1px solid var(--border);border-radius:999px;padding:5px 11px;font-size:.78rem;color:var(--muted);
-  }
-  a{color:var(--accent)}
-  .import-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .status-msg{font-size:.82rem;margin-top:10px;color:var(--muted)}
-  .status-msg.error{color:var(--bad)}
-  .status-msg.ok{color:var(--good)}
-  .inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-  .inline-form label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px}
+  select:focus,input:focus{outline:2px solid rgba(20,118,201,.4);outline-offset:1px}
 
+  .btn-green{background:var(--green);border:1px solid var(--green);color:#fff;font-weight:700;border-radius:9px;padding:10px 18px;font-size:.92rem;box-shadow:0 2px 6px rgba(66,195,75,.35)}
+  .btn-green:hover{filter:brightness(1.06)}
+  .btn-navy{background:var(--navy);border:1px solid var(--navy);color:#fff;font-weight:600;border-radius:9px;padding:9px 14px;font-size:.88rem}
+  .btn-navy:hover{filter:brightness(1.15)}
+  .btn-ghost-onnavy{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#fff;font-weight:600;border-radius:9px;padding:8px 13px;font-size:.85rem;display:inline-flex;align-items:center;gap:6px}
+  .btn-ghost-onnavy:hover{background:rgba(255,255,255,.16)}
+
+  /* ---------- Cabeçalho ---------- */
+  header{
+    background:var(--navy); color:var(--navy-text);
+    padding:14px 22px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:center; gap:12px}
+  .brand-icon{
+    width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,.12);
+    display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex:0 0 auto;
+  }
+  .brand h1{margin:0;font-size:1.18rem;font-weight:700;letter-spacing:-.01em}
+  .brand p{margin:2px 0 0;font-size:.78rem;color:rgba(255,255,255,.68)}
   .header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
   .menu-wrap{position:relative}
   .menu-popover{
     display:none; position:absolute; right:0; top:calc(100% + 10px); width:320px;
-    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg);
-    padding:16px; box-shadow:0 16px 40px rgba(0,0,0,.5); z-index:60;
+    background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:var(--radius-lg);
+    padding:16px; box-shadow:var(--shadow-lg); z-index:60;
   }
   .menu-popover.open{display:block}
   .menu-popover h3{margin:0 0 10px;font-size:.92rem}
@@ -142,90 +84,214 @@
   .stack-form input{width:100%}
   .stack-form button{width:100%;margin-top:12px}
 
+  .avatar-btn{
+    width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);
+    color:#fff;font-weight:700;font-size:.9rem;display:flex;align-items:center;justify-content:center;
+  }
+  .avatar-btn:hover{background:rgba(255,255,255,.22)}
+  #avatarEmail{font-size:.82rem;color:var(--muted);word-break:break-all;margin-bottom:6px}
+
+  /* ---------- Barra de filtros (sticky) ---------- */
+  .filter-bar{
+    position:sticky; top:0; z-index:20; background:var(--card); border-bottom:1px solid var(--border);
+    padding:12px 22px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; box-shadow:var(--shadow);
+  }
+  .filter-label{font-size:.76rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-right:2px}
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap;overflow-x:auto;max-width:100%}
+  .cycle-pill{
+    border:1px solid var(--border); background:var(--bg); color:var(--text); border-radius:999px;
+    padding:6px 14px; font-size:.82rem; white-space:nowrap; font-weight:600;
+  }
+  .cycle-pill.active{background:var(--navy); border-color:var(--navy); color:#fff}
+  .active-cycle-badge{
+    margin-left:auto; background:rgba(20,118,201,.1); color:var(--blue); border:1px solid rgba(20,118,201,.3);
+    border-radius:999px; padding:6px 14px; font-size:.8rem; font-weight:700;
+  }
+
+  .container{max-width:1440px;margin:0 auto;padding:22px 22px 60px}
+
+  #loadErrorBanner{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    margin:0 0 18px; padding:12px 16px; border-radius:10px;
+    background:rgba(224,72,63,.1); border:1px solid rgba(224,72,63,.35); color:var(--red); font-size:.85rem;
+  }
+
   #toast{
-    position:fixed; top:56px; left:50%; transform:translateX(-50%); z-index:100;
-    background:var(--panel2); border:1px solid var(--border); border-radius:10px;
-    padding:10px 18px; font-size:.85rem; box-shadow:0 10px 30px rgba(0,0,0,.4);
+    position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:300;
+    background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:10px;
+    padding:10px 18px; font-size:.85rem; box-shadow:var(--shadow-lg);
     display:none; max-width:90vw;
   }
-  #toast.error{border-color:rgba(255,69,58,.5); color:#ffb4af}
-  #toast.ok{border-color:rgba(50,215,75,.5); color:#8cf0a2}
+  #toast.error{border-color:var(--red); color:var(--red)}
+  #toast.ok{border-color:var(--green); color:#1f7a27}
+  :root[data-theme="dark"] #toast.ok, :root:not([data-theme="light"]) #toast.ok{color:#6adf76}
 
-  .infra-link{color:var(--accent);text-decoration:none;cursor:pointer;font-variant-numeric:tabular-nums}
+  /* ---------- KPIs ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .kpi{
+    background:var(--card); border:1px solid var(--border); border-left:5px solid var(--kpi-color,var(--navy));
+    border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:6px;
+  }
+  .kpi .kpi-top{display:flex;align-items:center;justify-content:space-between}
+  .kpi .label{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .kpi .icon{font-size:1.1rem}
+  .kpi .value{font-size:1.9rem;font-weight:800;letter-spacing:-.01em;color:var(--text)}
+  .kpi .sub{font-size:.8rem;color:var(--muted)}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700}
+  .badge.good{background:rgba(66,195,75,.14);color:#1f7a27}
+  .badge.bad{background:rgba(224,72,63,.14);color:var(--red)}
+  .badge.neutral{background:rgba(91,100,114,.14);color:var(--muted)}
+  :root[data-theme="dark"] .badge.good, :root:not([data-theme="light"]) .badge.good{color:#6adf76}
+
+  /* ---------- Cards genéricos ---------- */
+  section{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg);
+    padding:18px 20px; margin-bottom:18px; box-shadow:var(--shadow);
+  }
+  section h2{margin:0 0 4px;font-size:1.05rem;letter-spacing:-.005em}
+  section h4{margin:0 0 10px;font-size:.92rem}
+  section .desc{color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.5}
+  .chart-wrap{position:relative;height:300px}
+  .table-wrap{max-height:320px;overflow:auto}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .grid-2 > section{margin-bottom:0}
+
+  table,.chart-table{width:100%;border-collapse:collapse;font-size:.85rem}
+  th,td,.chart-table th,.chart-table td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border)}
+  th,.chart-table th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;user-select:none;position:sticky;top:0;background:var(--card)}
+  th[data-k]{cursor:pointer}
+  tbody tr{transition:background .1s}
+  tbody tr:hover{background:rgba(20,118,201,.05)}
+  tbody tr.row-alert{background:rgba(224,72,63,.07)}
+  tbody tr.row-alert:hover{background:rgba(224,72,63,.12)}
+  .num,.chart-table .num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag-semdados{color:var(--muted);font-style:italic}
+  .chart-table tfoot td{font-weight:800;border-top:2px solid var(--border);border-bottom:none}
+  .chart-table tfoot.total-highlight td{border-top:3px solid var(--navy);color:var(--navy)}
+  :root[data-theme="dark"] .chart-table tfoot.total-highlight td, :root:not([data-theme="light"]) .chart-table tfoot.total-highlight td{color:#8fb8ea}
+
+  .pill{
+    display:inline-flex;align-items:center;gap:6px;background:var(--bg);
+    border:1px solid var(--border);border-radius:999px;padding:5px 11px;font-size:.78rem;color:var(--muted);
+  }
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+
+  .callout{
+    display:flex; align-items:flex-start; gap:10px; border-radius:10px; padding:12px 14px; font-size:.84rem;
+    background:rgba(224,72,63,.08); border:1px solid rgba(224,72,63,.3); color:var(--red); margin-top:14px;
+  }
+  .callout b{color:inherit}
+  .callout .callout-icon{font-size:1.1rem}
+
+  .legend-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;font-size:.8rem;color:var(--muted)}
+  .legend-row span{display:inline-flex;align-items:center;gap:6px}
+  .legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+  .infra-link{color:var(--blue);text-decoration:none;cursor:pointer;font-variant-numeric:tabular-nums;font-weight:600}
   .infra-link:hover{text-decoration:underline}
   .infra-zero{color:var(--muted);font-variant-numeric:tabular-nums}
 
+  /* ---------- Relatório (CTA) ---------- */
+  .report-cta{background:var(--navy);color:#fff;border:none}
+  .report-cta-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .report-cta-icon{font-size:2rem;background:rgba(255,255,255,.12);border-radius:12px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .report-cta h2{color:#fff;margin:0}
+  .report-cta .desc{color:rgba(255,255,255,.72);margin:2px 0 0}
+  .report-cta-inner > div:nth-child(2){flex:1 1 260px}
+  #reportContent{margin-top:20px;background:rgba(255,255,255,.06);border-radius:var(--radius);padding:18px}
+  #reportContent h4{color:#fff}
+  #reportContent .chart-table th{background:transparent;color:rgba(255,255,255,.65)}
+  #reportContent .chart-table td{border-color:rgba(255,255,255,.12);color:#fff}
+  #reportContent .chart-table{margin-bottom:22px}
+
+  /* ---------- Evolução (SVG) ---------- */
+  .evol-svg-wrap{width:100%;overflow-x:auto}
+  .evol-svg-wrap svg{width:100%;height:220px;display:block}
+
+  /* ---------- Login ---------- */
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--navy)}
+  .login-card{
+    background:var(--card); border-radius:var(--radius-lg); padding:32px; width:100%; max-width:360px;
+    box-shadow:var(--shadow-lg);
+  }
+  .login-card .brand-icon{margin:0 auto 14px}
+  .login-card h1{font-size:1.15rem;margin:0 0 4px;text-align:center;color:var(--text)}
+  .login-card p{color:var(--muted);font-size:.85rem;margin:0 0 20px;text-align:center}
+  .login-card label{display:block;font-size:.8rem;color:var(--muted);margin:14px 0 6px}
+  .login-card input{width:100%}
+  .login-card button{width:100%;margin-top:20px;padding:11px}
+  .login-error{color:var(--red);font-size:.82rem;margin-top:10px;min-height:1.2em;text-align:center}
+  #app{display:none}
+
+  /* ---------- Modal de detalhe ---------- */
   #detailModalOverlay{
     display:none; position:fixed; inset:0; z-index:200;
-    background:rgba(0,0,0,.55); align-items:center; justify-content:center; padding:20px;
+    background:rgba(24,34,56,.55); align-items:center; justify-content:center; padding:20px;
   }
   #detailModalOverlay.open{display:flex}
   #detailModal{
-    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg);
+    background:var(--card); border-radius:var(--radius-lg);
     width:100%; max-width:420px; max-height:80vh; display:flex; flex-direction:column;
-    box-shadow:0 20px 60px rgba(0,0,0,.5);
+    box-shadow:var(--shadow-lg);
   }
   .detail-modal-header{
     display:flex; align-items:center; justify-content:space-between;
     padding:16px 18px; border-bottom:1px solid var(--border);
   }
   .detail-modal-header h3{margin:0;font-size:.98rem}
+  .detail-modal-header button{background:transparent;border:none;color:var(--muted);font-size:1rem}
   #detailModalBody{padding:14px 18px 18px; overflow-y:auto}
-  #detailModalBody table{width:100%;border-collapse:collapse;font-size:.85rem}
-  #detailModalBody th,#detailModalBody td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--border)}
-  #detailModalBody th{color:var(--muted);font-size:.7rem;text-transform:uppercase}
+  #detailModalBody table th{background:transparent}
 
-  #loginScreen{min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px}
-  .login-card{
-    background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,0)), var(--panel);
-    border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;width:100%;max-width:360px;
-    box-shadow:0 10px 30px rgba(0,0,0,.35);
+  footer.app-footer{text-align:center;color:var(--muted);font-size:.78rem;padding:18px 0 6px}
+
+  @media (max-width:1000px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .grid-2{grid-template-columns:1fr}
   }
-  .login-card h1{font-size:1.15rem;margin:0 0 4px}
-  .login-card p{color:var(--muted);font-size:.85rem;margin:0 0 20px}
-  .login-card label{display:block;font-size:.8rem;color:var(--muted);margin:14px 0 6px}
-  .login-card input{width:100%}
-  .login-card button{width:100%;margin-top:20px;padding:10px}
-  .login-error{color:var(--bad);font-size:.82rem;margin-top:10px;min-height:1.2em}
-  #app{display:none}
-  @media (max-width:600px){.container{padding:14px}}
+  @media (max-width:600px){
+    .container{padding:14px}
+    .kpis{grid-template-columns:1fr}
+    header{padding:12px 14px}
+    .filter-bar{padding:10px 14px}
+    table,.chart-table{display:block}
+    .table-wrap{overflow-x:auto}
+  }
 </style>
 </head>
 <body>
 
-<div class="mac-window">
-  <div class="mac-titlebar">
-    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-    <span class="mac-title">Painel de Infrações de Ponto</span>
-  </div>
-  <div class="mac-body">
-
 <div id="loginScreen">
   <form class="login-card" id="loginForm">
-    <h1>📊 Painel de Infrações de Ponto</h1>
-    <p>Acesso restrito. Faça login com sua conta autorizada.</p>
+    <div class="brand-icon" style="background:rgba(24,34,56,.08)">📊</div>
+    <h1>Painel de Infrações de Ponto</h1>
+    <p>Jarvis MCLL · alloha FIBRA — acesso restrito</p>
     <label for="email">Email</label>
     <input type="email" id="email" required autocomplete="username">
     <label for="password">Senha</label>
     <input type="password" id="password" required autocomplete="current-password">
-    <button class="primary" type="submit">Entrar</button>
+    <button class="btn-green" type="submit">Entrar</button>
     <div class="login-error" id="loginError"></div>
   </form>
 </div>
 
 <div id="app">
 <header>
-  <div>
-    <h1>📊 Painel de Infrações de Ponto por GA</h1>
-    <p id="subtitle">carregando dados…</p>
+  <div class="brand">
+    <div class="brand-icon">📊</div>
+    <div>
+      <h1>Painel de Infrações de Ponto por GA</h1>
+      <p id="subtitle">Jarvis MCLL · alloha FIBRA — abrangência MA/PA/PI/AP/AM</p>
+    </div>
   </div>
   <div class="header-actions">
     <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden>
-    <button class="ghost" id="importBtn" title="Importar base de análise (padrão BASE BI HE BH)">📎 Importar base</button>
-    <button class="ghost" id="goToReportBtn" title="Ir para o Relatório">📑 Relatório</button>
+    <button class="btn-ghost-onnavy" id="importBtn" title="Importar base de análise (padrão BASE BI HE BH)">📎 Importar base</button>
+    <button class="btn-ghost-onnavy" id="goToReportBtn" title="Ir para o Relatório">📑 Relatório</button>
 
     <div class="menu-wrap">
-      <button class="ghost" id="hierMenuBtn" title="Hierarquia: GO, GA e colaboradores">🏷️ Hierarquia</button>
+      <button class="btn-ghost-onnavy" id="hierMenuBtn" title="Hierarquia: GO, GA e colaboradores">🏷️ Hierarquia</button>
       <div class="menu-popover" id="hierMenu">
         <h3>Adicionar à hierarquia</h3>
         <form class="stack-form" id="hierCreateForm">
@@ -237,88 +303,94 @@
           <datalist id="hierGAList"></datalist>
           <label for="hierNome">Colaborador</label>
           <input type="text" id="hierNome" required>
-          <button class="primary" type="submit">Adicionar</button>
+          <button class="btn-navy" type="submit">Adicionar</button>
         </form>
         <hr>
         <h3>Ou anexar arquivo</h3>
         <div class="desc" style="margin-bottom:8px">Colunas: GO (GESTOR OPERACIONAL), GA (GESTOR DE ÁREA), NOME. Substitui toda a hierarquia atual.</div>
         <input type="file" id="hierFile" accept=".xlsx,.xls,.csv" style="width:100%">
-        <button class="primary" id="hierImportBtn" style="width:100%;margin-top:10px">Importar hierarquia</button>
+        <button class="btn-navy" id="hierImportBtn" style="width:100%;margin-top:10px">Importar hierarquia</button>
       </div>
     </div>
 
-    <div class="menu-wrap" id="adminMenuWrap" style="display:none">
-      <button class="ghost" id="adminMenuBtn" title="Gerenciar acessos">👤 Acessos</button>
-      <div class="menu-popover" id="adminMenu">
-        <h3>Gerenciar acessos</h3>
-        <div class="desc" style="margin-bottom:8px">Cria acesso para outra pessoa: ela recebe um email para definir a própria senha.</div>
-        <form class="stack-form" id="createUserForm">
-          <label for="newUserEmail">Email da pessoa</label>
-          <input type="email" id="newUserEmail" required placeholder="nome@empresa.com">
-          <button class="primary" type="submit">Enviar convite</button>
-        </form>
-        <div class="status-msg" id="createUserStatus"></div>
+    <div class="menu-wrap">
+      <button class="avatar-btn" id="avatarBtn" title="Sua conta"></button>
+      <div class="menu-popover" id="avatarMenu" style="right:0;width:280px">
+        <div id="avatarEmail"></div>
+        <div id="avatarAdminSection" style="display:none">
+          <hr>
+          <h3>Gerenciar acessos</h3>
+          <div class="desc" style="margin-bottom:8px">Cria acesso para outra pessoa: ela recebe um email para definir a própria senha.</div>
+          <form class="stack-form" id="createUserForm">
+            <label for="newUserEmail">Email da pessoa</label>
+            <input type="email" id="newUserEmail" required placeholder="nome@empresa.com">
+            <button class="btn-navy" type="submit">Enviar convite</button>
+          </form>
+          <div class="status-msg" id="createUserStatus" style="font-size:.8rem;margin-top:8px"></div>
+        </div>
+        <hr>
+        <button class="btn-navy" id="logoutBtn" style="width:100%">Sair</button>
       </div>
     </div>
-
-    <span class="pill" id="userEmail"></span>
-    <button class="ghost" id="logoutBtn">Sair</button>
   </div>
 </header>
 
-<div id="toast"></div>
-
-<div id="loadErrorBanner" style="display:none">
-  <span>⚠️ <span id="loadErrorMsg"></span></span>
-  <button class="primary" id="loadErrorRetry">Tentar novamente</button>
+<div class="filter-bar">
+  <span class="filter-label">Ciclo</span>
+  <select id="cicloSel" hidden></select>
+  <div class="pill-row" id="cicloPills"></div>
+  <span class="filter-label">GO</span>
+  <select id="goSel"><option value="">Todos</option></select>
+  <span class="active-cycle-badge" id="activeCycleBadge"></span>
 </div>
+
+<div id="toast"></div>
 
 <div class="container">
 
-  <div class="controls">
-    <label for="cicloSel" class="pill">Ciclo:</label>
-    <select id="cicloSel"></select>
-    <label for="goSel" class="pill">GO:</label>
-    <select id="goSel"><option value="">Todos</option></select>
-    <span class="pill" id="lastGenerated"></span>
+  <div id="loadErrorBanner" style="display:none">
+    <span>⚠️ <span id="loadErrorMsg"></span></span>
+    <button class="btn-navy" id="loadErrorRetry">Tentar novamente</button>
   </div>
 
   <div class="kpis" id="kpis"></div>
 
-  <section>
-    <h2>Infrações por GO (Gestor Operacional)</h2>
-    <div class="desc">GO calculado a partir da hierarquia mais atual cadastrada.</div>
-    <div class="chart-wrap"><canvas id="chartGO"></canvas></div>
-    <div class="table-wrap">
-      <table class="chart-table" id="tblGO">
-        <thead>
-          <tr><th>GO</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot><tr><td>Total geral</td><td class="num" id="tblGOTotDias7"></td><td class="num" id="tblGOTotInterj"></td><td class="num" id="tblGOTotHe2"></td><td class="num" id="tblGOTotTotal"></td></tr></tfoot>
-      </table>
-    </div>
-  </section>
+  <div class="grid-2">
+    <section>
+      <h2>Infrações por GO (Gestor Operacional)</h2>
+      <div class="desc">GO calculado a partir da hierarquia mais atual cadastrada. Total geral destacado em navy.</div>
+      <div class="chart-wrap"><canvas id="chartGO"></canvas></div>
+      <div class="table-wrap">
+        <table class="chart-table" id="tblGO">
+          <thead>
+            <tr><th>GO</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot class="total-highlight"><tr><td>Total geral</td><td class="num" id="tblGOTotDias7"></td><td class="num" id="tblGOTotInterj"></td><td class="num" id="tblGOTotHe2"></td><td class="num" id="tblGOTotTotal"></td></tr></tfoot>
+        </table>
+      </div>
+    </section>
 
-  <section>
-    <h2>Infrações por GA (Gestor de Área)</h2>
-    <div class="desc">Barras empilhadas por tipo de infração no ciclo selecionado. GAs sem nenhum registro de ponto aparecem à parte na tabela abaixo como "sem dados".</div>
-    <div class="chart-wrap" style="height:420px"><canvas id="chartGA"></canvas></div>
-    <div class="table-wrap">
-      <table class="chart-table" id="tblGA">
-        <thead>
-          <tr><th>GA</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr>
-        </thead>
-        <tbody></tbody>
-        <tfoot><tr><td>Total geral</td><td class="num" id="tblGATotDias7"></td><td class="num" id="tblGATotInterj"></td><td class="num" id="tblGATotHe2"></td><td class="num" id="tblGATotTotal"></td></tr></tfoot>
-      </table>
-    </div>
-  </section>
+    <section>
+      <h2>Infrações por GA (Gestor de Área)</h2>
+      <div class="desc">Barras horizontais empilhadas por tipo de infração no ciclo selecionado.</div>
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#1476C9"></span>&gt;7 dias trab.</span>
+        <span><span class="legend-dot" style="background:#E0483F"></span>Interjornada</span>
+        <span><span class="legend-dot" style="background:#42C34B"></span>&gt;2h extras</span>
+      </div>
+      <div class="chart-wrap" style="height:420px"><canvas id="chartGA"></canvas></div>
+      <div id="gaSemDadosBox" class="callout" style="display:none">
+        <span class="callout-icon">⚠️</span>
+        <div><b>GAs sem nenhum registro no ciclo:</b> <span id="gaSemDadosList"></span></div>
+      </div>
+    </section>
+  </div>
 
   <section>
     <h2>Evolução por ciclo</h2>
     <div class="desc">Histórico de todos os ciclos com dados na base. Ciclos sem nenhum registro não entram no cálculo de variação.</div>
-    <div class="chart-wrap"><canvas id="chartEvol"></canvas></div>
+    <div class="evol-svg-wrap" id="evolChart"></div>
     <div class="table-wrap">
       <table class="chart-table" id="tblEvol">
         <thead>
@@ -331,8 +403,8 @@
 
   <section>
     <h2>Resumo por colaborador</h2>
-    <div class="desc">Clique nos cabeçalhos para ordenar. Colaboradores sem nenhum registro de ponto no ciclo selecionado aparecem marcados como <span class="tag-semdados">sem dados</span> em vez de "0 infrações". Selecione um GA para ver todos os colaboradores dele na hierarquia, mesmo os sem registro.</div>
-    <div class="controls" style="margin-bottom:12px">
+    <div class="desc">Clique nos cabeçalhos para ordenar. Linhas em vermelho claro indicam total de infrações ≥ 7 no filtro atual. Selecione um GA para ver todos os colaboradores dele na hierarquia, mesmo os sem registro.</div>
+    <div class="controls">
       <label for="colabGaSel" class="pill">GA:</label>
       <select id="colabGaSel"><option value="">Todos</option></select>
     </div>
@@ -355,32 +427,32 @@
     </div>
   </section>
 
-  <section id="relatorioSection">
-    <h2>📑 Relatório</h2>
-    <div class="desc">Resumo do ciclo selecionado nos filtros acima, pronto para apresentação. Mostra apenas colaboradores com infrações.</div>
-    <div class="import-row" style="margin-bottom:16px">
-      <button class="primary" id="downloadPptBtn">Baixar PPT</button>
+  <section class="report-cta" id="relatorioSection">
+    <div class="report-cta-inner">
+      <div class="report-cta-icon">📑</div>
+      <div>
+        <h2 id="reportTitle">Relatório do ciclo</h2>
+        <p class="desc" id="reportSubtitle"></p>
+      </div>
+      <button class="btn-green" id="downloadPptBtn">⬇ Baixar PPT</button>
     </div>
 
     <div id="reportContent">
-      <h3 id="reportTitle" style="margin:0 0 4px"></h3>
-      <p class="desc" id="reportSubtitle" style="margin:0 0 18px"></p>
-
       <div class="kpis" id="reportKpis" style="margin-bottom:20px"></div>
 
-      <h4 style="margin:0 0 10px">Infrações por GO</h4>
-      <table class="chart-table" id="reportTblGO" style="margin-bottom:24px">
+      <h4>Infrações por GO</h4>
+      <table class="chart-table" id="reportTblGO">
         <thead><tr><th>GO</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr></thead>
         <tbody></tbody>
       </table>
 
-      <h4 style="margin:0 0 10px">Infrações por GA</h4>
-      <table class="chart-table" id="reportTblGA" style="margin-bottom:24px">
+      <h4>Infrações por GA</h4>
+      <table class="chart-table" id="reportTblGA">
         <thead><tr><th>GA</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr></thead>
         <tbody></tbody>
       </table>
 
-      <h4 style="margin:0 0 10px">Colaboradores com infrações</h4>
+      <h4>Colaboradores com infrações</h4>
       <table class="chart-table" id="reportTblColab">
         <thead><tr><th>GO</th><th>GA</th><th>Colaborador</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr></thead>
         <tbody></tbody>
@@ -389,18 +461,18 @@
   </section>
 
 </div>
+
+<footer class="app-footer">Jarvis MCLL · alloha FIBRA</footer>
+
 </div>
 
 <div id="detailModalOverlay">
   <div id="detailModal">
     <div class="detail-modal-header">
       <h3 id="detailModalTitle"></h3>
-      <button class="ghost" id="detailModalClose">✕</button>
+      <button id="detailModalClose">✕</button>
     </div>
     <div id="detailModalBody"></div>
-  </div>
-</div>
-
   </div>
 </div>
 
@@ -413,10 +485,20 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_xekNQuBKCxGqMSO8uv20UQ_gK87DXPh
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
 
+// Paleta única usada em toda a interface (KPIs, gráficos e relatório).
+const COLORS = { dias7:'#1476C9', interj:'#E0483F', he2:'#42C34B', navy:'#182238' };
+
+function isDarkTheme(){
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function chartTickColor(){ return isDarkTheme() ? '#9AA3B7' : '#5B6472'; }
+function chartGridColor(){ return isDarkTheme() ? 'rgba(255,255,255,.08)' : 'rgba(24,34,56,.08)'; }
+function chartLegendColor(){ return isDarkTheme() ? '#EDEFF4' : '#1A2233'; }
+
 const DATALABEL_STYLE = {
   color: '#fff',
   font: { size: 10, weight: '700' },
-  textStrokeColor: 'rgba(0,0,0,.55)',
+  textStrokeColor: 'rgba(0,0,0,.45)',
   textStrokeWidth: 3,
   formatter: (v) => v > 0 ? v.toLocaleString('pt-BR') : '',
 };
@@ -426,6 +508,10 @@ const DATALABEL_STYLE = {
 // barreira de segurança real -- isto aqui é só para esconder o botão de
 // quem não pode usar).
 const ADMIN_EMAILS = ["iatimcll@gmail.com"];
+
+// Linhas do "Resumo por colaborador" com total de infrações >= a este
+// limiar ficam destacadas em vermelho claro. Ajuste aqui se precisar.
+const ROW_ALERT_THRESHOLD = 7;
 
 let RECORDS = [], ROSTER = [], GOMAP = {}, META = {};
 
@@ -446,8 +532,10 @@ function showLogin(){
 async function showApp(session){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('userEmail').textContent = session.user.email;
-  document.getElementById('adminMenuWrap').style.display = ADMIN_EMAILS.includes(session.user.email) ? '' : 'none';
+  const email = session.user.email;
+  document.getElementById('avatarEmail').textContent = email;
+  document.getElementById('avatarBtn').textContent = email.slice(0,2).toUpperCase();
+  document.getElementById('avatarAdminSection').style.display = ADMIN_EMAILS.includes(email) ? 'block' : 'none';
   await loadData();
 }
 
@@ -479,7 +567,6 @@ function showLoadError(msg){
   const box = document.getElementById('loadErrorBanner');
   document.getElementById('loadErrorMsg').textContent = msg;
   box.style.display = 'flex';
-  document.getElementById('subtitle').textContent = 'Não foi possível carregar os dados.';
 }
 function hideLoadError(){
   document.getElementById('loadErrorBanner').style.display = 'none';
@@ -521,6 +608,31 @@ function buildCycleOptions(){
     sel.appendChild(o);
   });
   sel.value = META.ciclos.length ? META.ciclos[META.ciclos.length-1].inicio : '';
+  renderCyclePills();
+}
+
+function renderCyclePills(){
+  const sel = document.getElementById('cicloSel');
+  const wrap = document.getElementById('cicloPills');
+  wrap.innerHTML = '';
+  Array.from(sel.options).forEach(opt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cycle-pill' + (opt.value === sel.value ? ' active' : '');
+    btn.textContent = opt.textContent;
+    btn.addEventListener('click', () => {
+      if (sel.value === opt.value) return;
+      sel.value = opt.value;
+      sel.dispatchEvent(new Event('change'));
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+function updateActiveCycleBadge(){
+  const sel = document.getElementById('cicloSel');
+  document.getElementById('activeCycleBadge').textContent =
+    'Ciclo ativo: ' + (sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : 'TODOS OS CICLOS');
 }
 
 function buildGoOptions(){
@@ -572,36 +684,16 @@ function sumFlags(recs){
 }
 
 function computeKpiCards(){
-  const ciclo = document.getElementById('cicloSel').value;
   const cur = filteredRecords();
   const curSum = sumFlags(cur);
   const curTotal = curSum.dias7 + curSum.interj + curSum.he2;
-
-  let prevTotal = null, delta = null;
-  if (ciclo){
-    const prevCiclo = previousCycleStart(ciclo);
-    if (prevCiclo){
-      const go = document.getElementById('goSel').value;
-      const prevRecs = RECORDS.filter(r => r.ciclo_inicio === prevCiclo && (!go || r.go===go));
-      if (prevRecs.length){
-        const s = sumFlags(prevRecs);
-        prevTotal = s.dias7+s.interj+s.he2;
-        delta = curTotal - prevTotal;
-      }
-    }
-  }
-
-  const tipos = [['>7 dias trabalhados', curSum.dias7], ['Interjornada', curSum.interj], ['>2 horas extras', curSum.he2]];
-  tipos.sort((a,b)=>b[1]-a[1]);
-  const tipoMaisRecorrente = tipos[0][1] > 0 ? tipos[0][0] : '-';
+  const pct = (v) => curTotal > 0 ? Math.round((v / curTotal) * 100) + '% do total' : '—';
 
   return [
-    {label:'Total de infrações', value: fmtNum(curTotal), sub: cur.length + ' registro(s) no filtro'},
-    {label:'Ciclo anterior', value: prevTotal===null ? '-' : fmtNum(prevTotal), sub: ciclo ? '' : 'selecione um ciclo específico'},
-    {label:'Variação vs. anterior', value: delta===null ? '-' : (delta>0?'+':'')+fmtNum(delta),
-      sub: delta===null ? 'sem comparação válida' : (delta>0?'piora':delta<0?'melhora':'estável'),
-      badge: delta===null?null:(delta>0?'bad':delta<0?'good':'neutral')},
-    {label:'Tipo mais recorrente', value: tipoMaisRecorrente, sub:''},
+    { label:'Total de infrações', icon:'📊', color:COLORS.navy, value: fmtNum(curTotal), sub: cur.length + ' registro(s) no filtro' },
+    { label:'>7 dias trabalhados', icon:'📅', color:COLORS.dias7, value: fmtNum(curSum.dias7), sub: pct(curSum.dias7) },
+    { label:'Interjornada', icon:'🌙', color:COLORS.interj, value: fmtNum(curSum.interj), sub: pct(curSum.interj) },
+    { label:'>2 horas extras', icon:'⏳', color:COLORS.he2, value: fmtNum(curSum.he2), sub: pct(curSum.he2) },
   ];
 }
 
@@ -611,7 +703,11 @@ function renderKpiCardsInto(elId, cards){
   cards.forEach(c => {
     const div = document.createElement('div');
     div.className='kpi';
-    div.innerHTML = `<div class="label">${c.label}</div><div class="value">${c.value}</div><div class="sub">${c.badge? `<span class="badge ${c.badge}">${c.sub}</span>` : c.sub}</div>`;
+    div.style.setProperty('--kpi-color', c.color);
+    div.innerHTML = `
+      <div class="kpi-top"><span class="label">${c.label}</span><span class="icon">${c.icon}</span></div>
+      <div class="value">${c.value}</div>
+      <div class="sub">${c.sub}</div>`;
     el.appendChild(div);
   });
 }
@@ -620,7 +716,7 @@ function renderKPIs(){
   renderKpiCardsInto('kpis', computeKpiCards());
 }
 
-let chartGO, chartGA, chartEvol;
+let chartGO, chartGA;
 
 function renderChartGO(){
   const recs = filteredRecords();
@@ -635,9 +731,9 @@ function renderChartGO(){
   const data = {
     labels,
     datasets: [
-      ds('dias7','>7 dias trab.', '#f2b94b'),
-      ds('interj','Interjornada', '#5b8def'),
-      ds('he2','>2h extras', '#f2596b'),
+      ds('dias7','>7 dias trab.', COLORS.dias7),
+      ds('interj','Interjornada', COLORS.interj),
+      ds('he2','>2h extras', COLORS.he2),
     ]
   };
   if (chartGO) chartGO.destroy();
@@ -645,8 +741,8 @@ function renderChartGO(){
     type:'bar',
     data,
     options:{responsive:true, maintainAspectRatio:false,
-      scales:{x:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}},
-      plugins:{legend:{labels:{color:'#e8ecf4'}}, datalabels: DATALABEL_STYLE}
+      scales:{x:{stacked:true, ticks:{color:chartTickColor()}, grid:{color:chartGridColor()}}, y:{stacked:true, ticks:{color:chartTickColor()}, grid:{color:chartGridColor()}}},
+      plugins:{legend:{labels:{color:chartLegendColor()}}, datalabels: DATALABEL_STYLE}
     }
   });
 
@@ -672,16 +768,20 @@ function renderChartGA(){
   });
   const goFilter = document.getElementById('goSel').value;
   const rosterGAs = [...new Set(ROSTER.filter(r=>!goFilter || r.go===goFilter).map(r=>r.ga))];
-  rosterGAs.forEach(ga => { if(!byGA[ga]) byGA[ga] = {dias7:0,interj:0,he2:0,semdados:true}; });
+  const semDados = [];
+  rosterGAs.forEach(ga => {
+    if (!byGA[ga]){ byGA[ga] = {dias7:0,interj:0,he2:0}; semDados.push(ga); }
+    else if (byGA[ga].dias7+byGA[ga].interj+byGA[ga].he2 === 0){ semDados.push(ga); }
+  });
 
   const labels = Object.keys(byGA).sort((a,b)=> (byGA[b].dias7+byGA[b].interj+byGA[b].he2) - (byGA[a].dias7+byGA[a].interj+byGA[a].he2));
   const ds = (key,label,color) => ({label, backgroundColor:color, data: labels.map(l=>byGA[l][key]), datalabels: DATALABEL_STYLE});
   const data = {
     labels,
     datasets: [
-      ds('dias7','>7 dias trab.', '#f2b94b'),
-      ds('interj','Interjornada', '#5b8def'),
-      ds('he2','>2h extras', '#f2596b'),
+      ds('dias7','>7 dias trab.', COLORS.dias7),
+      ds('interj','Interjornada', COLORS.interj),
+      ds('he2','>2h extras', COLORS.he2),
     ]
   };
   if (chartGA) chartGA.destroy();
@@ -689,50 +789,31 @@ function renderChartGA(){
     type:'bar',
     data,
     options:{responsive:true, maintainAspectRatio:false, indexAxis:'y',
-      scales:{x:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{stacked:true, ticks:{color:'#98a2b8'}, grid:{color:'transparent'}}},
-      plugins:{legend:{labels:{color:'#e8ecf4'}}, datalabels: DATALABEL_STYLE}
+      scales:{x:{stacked:true, ticks:{color:chartTickColor()}, grid:{color:chartGridColor()}}, y:{stacked:true, ticks:{color:chartTickColor()}, grid:{color:'transparent'}}},
+      plugins:{legend:{display:false}, datalabels: DATALABEL_STYLE}
     }
   });
 
-  const totals = {dias7:0, interj:0, he2:0, total:0};
-  const tbodyGA = document.querySelector('#tblGA tbody');
-  tbodyGA.innerHTML = labels.map(ga => {
-    const g = byGA[ga]; const t = g.dias7+g.interj+g.he2;
-    totals.dias7+=g.dias7; totals.interj+=g.interj; totals.he2+=g.he2; totals.total+=t;
-    const semDados = g.semdados ? ` <span class="tag-semdados">(sem dados)</span>` : '';
-    return `<tr><td>${ga}${semDados}</td><td class="num">${g.dias7}</td><td class="num">${g.interj}</td><td class="num">${g.he2}</td><td class="num">${t}</td></tr>`;
-  }).join('') || `<tr><td colspan="5" class="tag-semdados">Sem registros no filtro atual.</td></tr>`;
-  document.getElementById('tblGATotDias7').textContent = totals.dias7;
-  document.getElementById('tblGATotInterj').textContent = totals.interj;
-  document.getElementById('tblGATotHe2').textContent = totals.he2;
-  document.getElementById('tblGATotTotal').textContent = totals.total;
+  const box = document.getElementById('gaSemDadosBox');
+  if (semDados.length){
+    document.getElementById('gaSemDadosList').textContent = semDados.join(', ');
+    box.style.display = 'flex';
+  } else {
+    box.style.display = 'none';
+  }
 }
 
 function renderChartEvol(){
   const go = document.getElementById('goSel').value;
   const cycles = META.ciclos;
-  const rows = cycles.map((c, i) => {
+  const rows = cycles.map((c) => {
     const recs = RECORDS.filter(r => r.ciclo_inicio===c.inicio && (!go || r.go===go));
     const s = sumFlags(recs);
     const total = s.dias7+s.interj+s.he2;
     return { label: c.label, dias7: s.dias7, interj: s.interj, he2: s.he2, total, temDados: recs.length > 0 };
   });
 
-  const totals = rows.map(r => r.temDados ? r.total : null);
-  const labels = cycles.map(c=>c.label.split(' a ')[0]);
-  if (chartEvol) chartEvol.destroy();
-  chartEvol = new Chart(document.getElementById('chartEvol'), {
-    type:'line',
-    data:{ labels, datasets:[{
-      label:'Total de infrações', data: totals, spanGaps:false,
-      borderColor:'#5b8def', backgroundColor:'rgba(91,141,239,.15)', fill:true, tension:.25, pointRadius:4,
-      datalabels: { color:'#e8ecf4', font:{size:11,weight:'700'}, align:'top', anchor:'end', formatter:(v)=> v===null?'':v.toLocaleString('pt-BR') },
-    }]},
-    options:{responsive:true, maintainAspectRatio:false,
-      scales:{x:{ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}}, y:{ticks:{color:'#98a2b8'}, grid:{color:'#2a3348'}, beginAtZero:true}},
-      plugins:{legend:{labels:{color:'#e8ecf4'}}}
-    }
-  });
+  renderEvolSvg(rows);
 
   const tbodyEvol = document.querySelector('#tblEvol tbody');
   tbodyEvol.innerHTML = rows.map((r, i) => {
@@ -754,6 +835,45 @@ function renderChartEvol(){
       : `<td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td>`;
     return `<tr><td>${r.label}</td>${cellsDados}<td class="num">${variacao}</td><td><span class="badge ${avalClass}">${avaliacao}</span></td></tr>`;
   }).join('');
+}
+
+function renderEvolSvg(rows){
+  const wrap = document.getElementById('evolChart');
+  const W = Math.max(600, rows.length * 90);
+  const H = 220, padL = 40, padR = 20, padT = 24, padB = 28;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVal = Math.max(1, ...rows.map(r => r.temDados ? r.total : 0));
+  const x = (i) => padL + (rows.length <= 1 ? plotW/2 : (i/(rows.length-1)) * plotW);
+  const y = (v) => padT + plotH - (v / maxVal) * plotH;
+
+  let segments = [];
+  let current = [];
+  rows.forEach((r, i) => {
+    if (r.temDados){ current.push([x(i), y(r.total)]); }
+    else { if (current.length > 1) segments.push(current); current = []; }
+  });
+  if (current.length > 1) segments.push(current);
+
+  const linesSvg = segments.map(seg =>
+    `<polyline points="${seg.map(p=>p.join(',')).join(' ')}" fill="none" stroke="#1476C9" stroke-width="2.5"/>`
+  ).join('');
+
+  const pointsSvg = rows.map((r, i) => {
+    if (!r.temDados) return '';
+    const cx = x(i), cy = y(r.total);
+    return `<circle cx="${cx}" cy="${cy}" r="4" fill="#1476C9"/>
+      <text x="${cx}" y="${cy-10}" font-size="11" font-weight="700" text-anchor="middle" fill="var(--text-svg,#1A2233)">${r.total.toLocaleString('pt-BR')}</text>`;
+  }).join('');
+
+  const axisSvg = rows.map((r, i) => {
+    const cx = x(i);
+    const label = r.label.split(' a ')[0];
+    return `<text x="${cx}" y="${H-8}" font-size="10" text-anchor="middle" fill="#8a93a3">${label}</text>`;
+  }).join('');
+
+  const baseline = `<line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="rgba(128,128,128,.25)"/>`;
+
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMid meet" style="--text-svg:${isDarkTheme()?'#EDEFF4':'#1A2233'}">${baseline}${linesSvg}${pointsSvg}${axisSvg}</svg>`;
 }
 
 let sortState = {k:'total', dir:-1};
@@ -835,20 +955,25 @@ function renderTable(){
     return dir * ((a[k]??0) - (b[k]??0));
   });
   const tbody = document.querySelector('#tblColab tbody');
-  tbody.innerHTML = rows.map(r => `
-    <tr>
+  tbody.innerHTML = rows.map(r => {
+    const alert = r.registros>0 && r.total>=ROW_ALERT_THRESHOLD ? ' class="row-alert"' : '';
+    return `
+    <tr${alert}>
       <td>${r.go||'-'}</td>
       <td>${r.ga||'-'}</td>
       <td>${r.nome}</td>
       <td class="num">${r.registros}</td>
       ${r.registros===0
-        ? `<td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">sem dados</td>`
+        ? `<td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num"><span class="badge neutral">sem dados no ciclo</span></td>`
         : `${infraCell(r.nome,'dias7',r.dias7)}${infraCell(r.nome,'interj',r.interj)}${infraCell(r.nome,'he2',r.he2)}${infraCell(r.nome,'total',r.total)}`}
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderAll(){
+  renderCyclePills();
+  updateActiveCycleBadge();
   renderKPIs();
   renderChartGO();
   renderChartGA();
@@ -865,8 +990,8 @@ function renderReport(){
   const cicloLabel = cicloSelEl.value ? cicloSelEl.options[cicloSelEl.selectedIndex].textContent : 'Todos os ciclos';
   const goLabel = goSelEl.value || 'Todos os GOs';
 
-  document.getElementById('reportTitle').textContent = `Relatório de Infrações — ${cicloLabel}`;
-  document.getElementById('reportSubtitle').textContent = `GO: ${goLabel} · Gerado em ${new Date().toLocaleString('pt-BR')}`;
+  document.getElementById('reportTitle').textContent = `Relatório do ciclo — ${cicloLabel}`;
+  document.getElementById('reportSubtitle').textContent = `GO: ${goLabel} · Gerado em ${new Date().toLocaleString('pt-BR')} · Baixe em PowerPoint para apresentação`;
 
   renderKpiCardsInto('reportKpis', computeKpiCards());
 
@@ -919,18 +1044,19 @@ async function downloadPPT(){
   pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
   pptx.layout = 'WIDE';
 
-  const bg = '1C1F26';
-  const fg = 'F0F1F3';
-  const muted = '98A0AC';
-  const accent = '0A84FF';
+  const bg = '182238';
+  const fg = 'FFFFFF';
+  const muted = 'AEB6C4';
+  const accent = '1476C9';
   const headerRow = (cols) => cols.map(t => ({ text: t, options: { bold: true, color: 'FFFFFF', fill: { color: accent } } }));
-  const dataRow = (cols) => cols.map(t => ({ text: String(t), options: { color: fg } }));
+  const dataRow = (cols) => cols.map(t => ({ text: String(t), options: { color: '1A2233' } }));
 
   let slide = pptx.addSlide();
   slide.background = { color: bg };
   slide.addText('Relatório de Infrações de Ponto', { x:0.6, y:2.4, w:12.1, h:1, fontSize:34, bold:true, color:fg });
-  slide.addText(data.cicloLabel, { x:0.6, y:3.4, w:12.1, h:0.6, fontSize:20, color:accent });
+  slide.addText(data.cicloLabel, { x:0.6, y:3.4, w:12.1, h:0.6, fontSize:20, color:'42C34B' });
   slide.addText(`GO: ${data.goLabel}  ·  Gerado em ${new Date().toLocaleString('pt-BR')}`, { x:0.6, y:4.05, w:12.1, h:0.5, fontSize:13, color:muted });
+  slide.addText('Jarvis MCLL · alloha FIBRA', { x:0.6, y:6.8, w:12.1, h:0.4, fontSize:11, color:muted });
 
   slide = pptx.addSlide();
   slide.background = { color: bg };
@@ -943,36 +1069,36 @@ async function downloadPPT(){
   });
 
   slide = pptx.addSlide();
-  slide.background = { color: bg };
-  slide.addText('Infrações por GO', { x:0.6, y:0.4, w:12, h:0.6, fontSize:24, bold:true, color:fg });
+  slide.background = { color: 'FFFFFF' };
+  slide.addText('Infrações por GO', { x:0.6, y:0.4, w:12, h:0.6, fontSize:24, bold:true, color:bg });
   const goTableRows = [headerRow(['GO','>7 dias trab.','Interjornada','>2h extras','Total'])];
   data.goLabels.forEach(go => {
     const g = data.byGO[go];
     goTableRows.push(dataRow([go, g.dias7, g.interj, g.he2, g.dias7+g.interj+g.he2]));
   });
-  slide.addTable(goTableRows, { x:0.6, y:1.2, w:12.1, fontSize:12, fill:{color:'26292F'}, border:{type:'solid', color:'3A3F4A', pt:0.5}, autoPage:false });
+  slide.addTable(goTableRows, { x:0.6, y:1.2, w:12.1, fontSize:12, fill:{color:'F2F4F7'}, border:{type:'solid', color:'D8DDE5', pt:0.5}, autoPage:false });
 
   slide = pptx.addSlide();
-  slide.background = { color: bg };
-  slide.addText('Infrações por GA', { x:0.6, y:0.4, w:12, h:0.6, fontSize:24, bold:true, color:fg });
+  slide.background = { color: 'FFFFFF' };
+  slide.addText('Infrações por GA', { x:0.6, y:0.4, w:12, h:0.6, fontSize:24, bold:true, color:bg });
   const gaTableRows = [headerRow(['GA','>7 dias trab.','Interjornada','>2h extras','Total'])];
   data.gaLabels.forEach(ga => {
     const g = data.byGA[ga];
     gaTableRows.push(dataRow([ga, g.dias7, g.interj, g.he2, g.dias7+g.interj+g.he2]));
   });
-  slide.addTable(gaTableRows, { x:0.6, y:1.2, w:12.1, fontSize:12, fill:{color:'26292F'}, border:{type:'solid', color:'3A3F4A', pt:0.5}, autoPage:false });
+  slide.addTable(gaTableRows, { x:0.6, y:1.2, w:12.1, fontSize:12, fill:{color:'F2F4F7'}, border:{type:'solid', color:'D8DDE5', pt:0.5}, autoPage:false });
 
   const perSlide = 16;
   const totalColabSlides = Math.max(1, Math.ceil(data.colabRows.length / perSlide));
   for (let i = 0; i < totalColabSlides; i++){
     const chunk = data.colabRows.slice(i * perSlide, (i + 1) * perSlide);
     slide = pptx.addSlide();
-    slide.background = { color: bg };
-    slide.addText(`Colaboradores com infrações (${i+1}/${totalColabSlides})`, { x:0.6, y:0.4, w:12, h:0.6, fontSize:22, bold:true, color:fg });
+    slide.background = { color: 'FFFFFF' };
+    slide.addText(`Colaboradores com infrações (${i+1}/${totalColabSlides})`, { x:0.6, y:0.4, w:12, h:0.6, fontSize:22, bold:true, color:bg });
     const rows = [headerRow(['GO','GA','Colaborador','>7 dias','Interj.','>2h extras','Total'])];
     chunk.forEach(r => rows.push(dataRow([r.go||'-', r.ga||'-', r.nome, r.dias7, r.interj, r.he2, r.total])));
     if (!chunk.length) rows.push(dataRow(['Nenhum colaborador com infração no filtro atual.','','','','','','']));
-    slide.addTable(rows, { x:0.4, y:1.15, w:12.5, fontSize:10.5, fill:{color:'26292F'}, border:{type:'solid', color:'3A3F4A', pt:0.5}, autoPage:false, colW:[2.0,2.0,3.2,1.05,1.05,1.15,0.85] });
+    slide.addTable(rows, { x:0.4, y:1.15, w:12.5, fontSize:10.5, fill:{color:'F2F4F7'}, border:{type:'solid', color:'D8DDE5', pt:0.5}, autoPage:false, colW:[2.0,2.0,3.2,1.05,1.05,1.15,0.85] });
   }
 
   const fileCiclo = (data.cicloLabel.match(/\d{2}\/\d{2}\/\d{4}/g) || []).map(d => d.replace(/\//g,'-')).join('_a_') || 'todos-ciclos';
@@ -980,9 +1106,8 @@ async function downloadPPT(){
 }
 
 function renderIssues(){
-  document.getElementById('lastGenerated').textContent = 'Dados gerados em ' + META.gerado_em;
   document.getElementById('subtitle').textContent =
-    `${META.total_registros.toLocaleString('pt-BR')} registros de ponto · ${META.colaboradores_com_registro} colaboradores com dados de ${ROSTER.length} no roster`;
+    `Jarvis MCLL · alloha FIBRA — ${META.total_registros.toLocaleString('pt-BR')} registros · ${META.colaboradores_com_registro} colaboradores com dados de ${ROSTER.length} no roster`;
 }
 
 // ---------- Importar base de análise (padrão BASE BI HE BH) ----------
@@ -1187,7 +1312,7 @@ document.getElementById('importFile').addEventListener('change', (e) => {
   e.target.value = '';
 });
 
-// ---------- Menus (Hierarquia / Gerenciar acessos) ----------
+// ---------- Menus (Hierarquia / Avatar) ----------
 
 function toggleMenu(popoverEl){
   const wasOpen = popoverEl.classList.contains('open');
@@ -1198,9 +1323,9 @@ document.getElementById('hierMenuBtn').addEventListener('click', (e) => {
   e.stopPropagation();
   toggleMenu(document.getElementById('hierMenu'));
 });
-document.getElementById('adminMenuBtn').addEventListener('click', (e) => {
+document.getElementById('avatarBtn').addEventListener('click', (e) => {
   e.stopPropagation();
-  toggleMenu(document.getElementById('adminMenu'));
+  toggleMenu(document.getElementById('avatarMenu'));
 });
 document.addEventListener('click', (e) => {
   document.querySelectorAll('.menu-popover.open').forEach(p => {
@@ -1374,6 +1499,11 @@ function init(){
         btn.disabled = false;
       }
     });
+    if (window.matchMedia){
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        renderChartGO(); renderChartGA(); renderChartEvol();
+      });
+    }
     initialized = true;
   }
 }
