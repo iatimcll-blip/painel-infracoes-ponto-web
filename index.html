@@ -122,10 +122,10 @@
     border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:6px;
   }
   .kpi .kpi-top{display:flex;align-items:center;justify-content:space-between}
-  .kpi .label{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .kpi .label{color:var(--muted);font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
   .kpi .icon{font-size:1.1rem}
-  .kpi .value{font-size:1.9rem;font-weight:800;letter-spacing:-.01em;color:var(--text)}
-  .kpi .sub{font-size:.8rem;color:var(--muted)}
+  .kpi .value{font-size:2rem;font-weight:800;letter-spacing:-.01em;color:var(--text)}
+  .kpi .sub{font-size:.82rem;color:var(--muted)}
   .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700}
   .badge.good{background:rgba(66,195,75,.14);color:#1f7a27}
   .badge.bad{background:rgba(224,72,63,.14);color:var(--red)}
@@ -136,18 +136,18 @@
     background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg);
     padding:18px 20px; margin-bottom:18px; box-shadow:var(--shadow);
   }
-  section h2{margin:0 0 4px;font-size:1.05rem;letter-spacing:-.005em}
-  section h4{margin:0 0 10px;font-size:.92rem}
-  section .desc{color:var(--muted);font-size:.82rem;margin-bottom:14px;line-height:1.5}
+  section h2{margin:0 0 5px;font-size:1.15rem;font-weight:700;letter-spacing:-.01em;color:var(--text)}
+  section h4{margin:0 0 12px;font-size:.98rem;font-weight:700;color:var(--text)}
+  section .desc{color:var(--muted);font-size:.86rem;margin-bottom:16px;line-height:1.6}
   .chart-wrap{position:relative;height:300px}
   .table-wrap{max-height:320px;overflow:auto}
 
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   .grid-2 > section{margin-bottom:0}
 
-  table,.chart-table{width:100%;border-collapse:collapse;font-size:.85rem}
-  th,td,.chart-table th,.chart-table td{padding:9px 10px;text-align:left;border-bottom:1px solid var(--border)}
-  th,.chart-table th{color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;user-select:none;position:sticky;top:0;background:var(--card)}
+  table,.chart-table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th,td,.chart-table th,.chart-table td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--border)}
+  th,.chart-table th{color:var(--muted);font-weight:700;font-size:.73rem;text-transform:uppercase;letter-spacing:.05em;user-select:none;position:sticky;top:0;background:var(--card)}
   th[data-k]{cursor:pointer}
   tbody tr{transition:background .1s}
   tbody tr:hover{background:rgba(20,118,201,.05)}
@@ -219,18 +219,16 @@
   .infra-zero{color:var(--muted);font-variant-numeric:tabular-nums}
 
   /* ---------- Relatório (CTA) ---------- */
-  .report-cta{background:var(--navy);color:#fff;border:none}
+  .report-cta{background:var(--card);border:1px solid var(--border);border-top:4px solid var(--navy)}
   .report-cta-inner{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-  .report-cta-icon{font-size:2rem;background:rgba(255,255,255,.12);border-radius:12px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
-  .report-cta h2{color:#fff;margin:0}
-  .report-cta .desc{color:rgba(255,255,255,.72);margin:2px 0 0}
+  .report-cta-icon{font-size:2rem;background:rgba(24,34,56,.07);color:var(--navy);border-radius:12px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .report-cta h2{color:var(--text);margin:0}
+  .report-cta .desc{color:var(--muted);margin:2px 0 0}
   .report-cta-inner > div:nth-child(2){flex:1 1 260px}
-  #reportContent{margin-top:20px;background:rgba(255,255,255,.06);border-radius:var(--radius);padding:18px}
-  #reportContent h4{color:#fff}
-  #reportContent .chart-table th{background:transparent;color:rgba(255,255,255,.65)}
-  #reportContent .chart-table td{border-color:rgba(255,255,255,.12);color:#fff}
-  #reportContent .cell-alert{background:rgba(224,72,63,.4);color:#fff}
-  #reportContent .chart-table{margin-bottom:22px}
+  #reportContent{margin-top:20px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+  #reportContent h4{color:var(--text);font-size:.95rem;margin:0 0 12px}
+  #reportContent .chart-table{margin-bottom:26px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  #reportContent .chart-table th{background:var(--card)}
 
   /* ---------- Evolução (SVG) ---------- */
   .evol-svg-wrap{width:100%;overflow-x:auto}
