@@ -168,6 +168,18 @@
   .ga-block-capture .capture-title{font-weight:700;font-size:.95rem;margin-bottom:2px}
   .ga-block-capture .capture-sub{font-size:.78rem;color:var(--muted);margin-bottom:10px;display:block}
   .copy-img-btn{white-space:nowrap}
+
+  .ranking-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .ranking-item{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);
+    border-radius:10px;background:var(--bg);
+  }
+  .ranking-medal{font-size:1.1rem;width:24px;text-align:center;flex:0 0 auto}
+  .ranking-name{flex:1;font-size:.88rem;font-weight:600}
+  .ranking-meta{font-size:.78rem;color:var(--muted)}
+  .ranking-delta{font-weight:800;font-size:.9rem}
+  .ranking-delta.good{color:var(--green)}
+  .ranking-empty{color:var(--muted);font-size:.85rem;font-style:italic}
   .chart-table tfoot td{font-weight:800;border-top:2px solid var(--border);border-bottom:none}
   .chart-table tfoot.total-highlight td{border-top:3px solid var(--navy);color:var(--navy)}
 
@@ -395,6 +407,21 @@
     <h2>Semana atual vs. semana anterior</h2>
     <div class="desc">Compara os dois últimos períodos de 7 dias com dados na base (respeita o filtro de GO). Independe do ciclo/semana selecionado acima.</div>
     <div class="kpis" id="weekCompareKpis"></div>
+  </section>
+
+  <section>
+    <h2>🏆 Ranking</h2>
+    <div class="desc">Esquerda: GAs sem nenhuma infração no filtro atual (ciclo/GO/semana). Direita: GAs que reduziram infrações na semana atual vs. a anterior (respeita só o filtro de GO, igual ao bloco acima).</div>
+    <div class="grid-2">
+      <div>
+        <h4>🥇 GAs sem infrações</h4>
+        <ol class="ranking-list" id="rankingSemInfracoes"></ol>
+      </div>
+      <div>
+        <h4>📉 GAs que reduziram (semana atual vs. anterior)</h4>
+        <ol class="ranking-list" id="rankingReduziram"></ol>
+      </div>
+    </div>
   </section>
 
   <section>
@@ -1089,6 +1116,7 @@ function renderAll(){
   renderChartEvol();
   renderDailyChart();
   renderWeekCompare();
+  renderRanking();
   renderTable();
   renderGaBlocks();
   renderReport();
@@ -1216,6 +1244,71 @@ function renderWeekCompare(){
       sub: delta===null ? 'sem comparação' : (delta>0?'piora':delta<0?'melhora':'estável') },
   ];
   renderKpiCardsInto('weekCompareKpis', cards);
+}
+
+// ---------- Ranking: GAs sem infrações / GAs que reduziram na semana ----------
+
+function renderRanking(){
+  const go = document.getElementById('goSel').value;
+  const medals = ['🥇','🥈','🥉'];
+
+  // GAs sem infrações no filtro atual (ciclo/GO/semana selecionados)
+  const recs = filteredRecords();
+  const byGaAtual = {};
+  recs.forEach(r => {
+    if (!byGaAtual[r.ga]) byGaAtual[r.ga] = { total:0, registros:0 };
+    byGaAtual[r.ga].total += r.dias7+r.interj+r.he2;
+    byGaAtual[r.ga].registros++;
+  });
+  const rosterGAs = [...new Set(ROSTER.filter(r=>!go || r.go===go).map(r=>r.ga))];
+  rosterGAs.forEach(ga => { if (!byGaAtual[ga]) byGaAtual[ga] = { total:0, registros:0 }; });
+
+  const semInfracoes = Object.entries(byGaAtual)
+    .filter(([,info]) => info.total === 0)
+    .sort((a,b) => b[1].registros - a[1].registros || a[0].localeCompare(b[0]))
+    .slice(0, 3);
+
+  const elSem = document.getElementById('rankingSemInfracoes');
+  elSem.innerHTML = semInfracoes.length
+    ? semInfracoes.map(([ga,info], i) => `
+      <li class="ranking-item">
+        <span class="ranking-medal">${medals[i]||'•'}</span>
+        <span class="ranking-name">${ga}</span>
+        <span class="ranking-meta">${info.registros>0 ? info.registros+' registro(s)' : 'sem dados'}</span>
+      </li>`).join('')
+    : `<li class="ranking-empty">Nenhum GA sem infrações no filtro atual.</li>`;
+
+  // GAs que reduziram infrações: semana atual vs. anterior (só respeita GO,
+  // igual ao bloco "Semana atual vs. semana anterior" acima)
+  const scoped = RECORDS.filter(r => !go || r.go === go);
+  const weeks = [...new Set(scoped.map(r => weekStartISO(r.data)))].sort();
+  const atual = weeks[weeks.length-1], anterior = weeks[weeks.length-2];
+  const elRed = document.getElementById('rankingReduziram');
+  if (!atual || !anterior){
+    elRed.innerHTML = `<li class="ranking-empty">Não há semanas suficientes para comparar.</li>`;
+  } else {
+    const byGaWeek = {};
+    scoped.forEach(r => {
+      const w = weekStartISO(r.data);
+      if (w !== atual && w !== anterior) return;
+      if (!byGaWeek[r.ga]) byGaWeek[r.ga] = { atual:0, anterior:0 };
+      byGaWeek[r.ga][w===atual ? 'atual' : 'anterior'] += r.dias7+r.interj+r.he2;
+    });
+    const reduziram = Object.entries(byGaWeek)
+      .map(([ga,v]) => ({ ga, delta: v.atual - v.anterior, atual:v.atual, anterior:v.anterior }))
+      .filter(r => r.delta < 0)
+      .sort((a,b) => a.delta - b.delta);
+
+    elRed.innerHTML = reduziram.length
+      ? reduziram.map((r,i) => `
+        <li class="ranking-item">
+          <span class="ranking-medal">${medals[i]||'•'}</span>
+          <span class="ranking-name">${r.ga}</span>
+          <span class="ranking-meta">${r.anterior} → ${r.atual}</span>
+          <span class="ranking-delta good">${r.delta}</span>
+        </li>`).join('')
+      : `<li class="ranking-empty">Nenhum GA reduziu infrações nessa comparação.</li>`;
+  }
 }
 
 // ---------- Evolução diária dentro do ciclo/semana selecionados ----------
