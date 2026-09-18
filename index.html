@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <style>
   :root{
     --bg:#0f1420; --panel:#1c1f26; --panel2:#26292f; --border:rgba(255,255,255,.09);
@@ -221,6 +222,7 @@
   <div class="header-actions">
     <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden>
     <button class="ghost" id="importBtn" title="Importar base de análise (padrão BASE BI HE BH)">📎 Importar base</button>
+    <button class="ghost" id="goToReportBtn" title="Ir para o Relatório">📑 Relatório</button>
 
     <div class="menu-wrap">
       <button class="ghost" id="hierMenuBtn" title="Hierarquia: GO, GA e colaboradores">🏷️ Hierarquia</button>
@@ -348,6 +350,39 @@
             <th data-k="total" class="num">Total</th>
           </tr>
         </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="relatorioSection">
+    <h2>📑 Relatório</h2>
+    <div class="desc">Resumo do ciclo selecionado nos filtros acima, pronto para apresentação. Mostra apenas colaboradores com infrações.</div>
+    <div class="import-row" style="margin-bottom:16px">
+      <button class="primary" id="downloadPptBtn">Baixar PPT</button>
+    </div>
+
+    <div id="reportContent">
+      <h3 id="reportTitle" style="margin:0 0 4px"></h3>
+      <p class="desc" id="reportSubtitle" style="margin:0 0 18px"></p>
+
+      <div class="kpis" id="reportKpis" style="margin-bottom:20px"></div>
+
+      <h4 style="margin:0 0 10px">Infrações por GO</h4>
+      <table class="chart-table" id="reportTblGO" style="margin-bottom:24px">
+        <thead><tr><th>GO</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <h4 style="margin:0 0 10px">Infrações por GA</h4>
+      <table class="chart-table" id="reportTblGA" style="margin-bottom:24px">
+        <thead><tr><th>GA</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <h4 style="margin:0 0 10px">Colaboradores com infrações</h4>
+      <table class="chart-table" id="reportTblColab">
+        <thead><tr><th>GO</th><th>GA</th><th>Colaborador</th><th class="num">&gt;7 dias trab.</th><th class="num">Interjornada</th><th class="num">&gt;2h extras</th><th class="num">Total</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -536,7 +571,7 @@ function sumFlags(recs){
   }, {dias7:0, interj:0, he2:0});
 }
 
-function renderKPIs(){
+function computeKpiCards(){
   const ciclo = document.getElementById('cicloSel').value;
   const cur = filteredRecords();
   const curSum = sumFlags(cur);
@@ -560,10 +595,7 @@ function renderKPIs(){
   tipos.sort((a,b)=>b[1]-a[1]);
   const tipoMaisRecorrente = tipos[0][1] > 0 ? tipos[0][0] : '-';
 
-  const kpis = document.getElementById('kpis');
-  kpis.innerHTML = '';
-
-  const cards = [
+  return [
     {label:'Total de infrações', value: fmtNum(curTotal), sub: cur.length + ' registro(s) no filtro'},
     {label:'Ciclo anterior', value: prevTotal===null ? '-' : fmtNum(prevTotal), sub: ciclo ? '' : 'selecione um ciclo específico'},
     {label:'Variação vs. anterior', value: delta===null ? '-' : (delta>0?'+':'')+fmtNum(delta),
@@ -571,12 +603,21 @@ function renderKPIs(){
       badge: delta===null?null:(delta>0?'bad':delta<0?'good':'neutral')},
     {label:'Tipo mais recorrente', value: tipoMaisRecorrente, sub:''},
   ];
+}
+
+function renderKpiCardsInto(elId, cards){
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
   cards.forEach(c => {
     const div = document.createElement('div');
     div.className='kpi';
     div.innerHTML = `<div class="label">${c.label}</div><div class="value">${c.value}</div><div class="sub">${c.badge? `<span class="badge ${c.badge}">${c.sub}</span>` : c.sub}</div>`;
-    kpis.appendChild(div);
+    el.appendChild(div);
   });
+}
+
+function renderKPIs(){
+  renderKpiCardsInto('kpis', computeKpiCards());
 }
 
 let chartGO, chartGA, chartEvol;
@@ -813,6 +854,129 @@ function renderAll(){
   renderChartGA();
   renderChartEvol();
   renderTable();
+  renderReport();
+}
+
+// ---------- Relatório ----------
+
+function renderReport(){
+  const cicloSelEl = document.getElementById('cicloSel');
+  const goSelEl = document.getElementById('goSel');
+  const cicloLabel = cicloSelEl.value ? cicloSelEl.options[cicloSelEl.selectedIndex].textContent : 'Todos os ciclos';
+  const goLabel = goSelEl.value || 'Todos os GOs';
+
+  document.getElementById('reportTitle').textContent = `Relatório de Infrações — ${cicloLabel}`;
+  document.getElementById('reportSubtitle').textContent = `GO: ${goLabel} · Gerado em ${new Date().toLocaleString('pt-BR')}`;
+
+  renderKpiCardsInto('reportKpis', computeKpiCards());
+
+  const recs = filteredRecords();
+
+  const byGO = {};
+  recs.forEach(r => {
+    const go = r.go || 'SEM GO DEFINIDO';
+    if (!byGO[go]) byGO[go] = {dias7:0,interj:0,he2:0};
+    byGO[go].dias7 += r.dias7; byGO[go].interj += r.interj; byGO[go].he2 += r.he2;
+  });
+  const goLabels = Object.keys(byGO).sort((a,b)=> (byGO[b].dias7+byGO[b].interj+byGO[b].he2) - (byGO[a].dias7+byGO[a].interj+byGO[a].he2));
+  document.querySelector('#reportTblGO tbody').innerHTML = goLabels.map(go => {
+    const g = byGO[go]; const t = g.dias7+g.interj+g.he2;
+    return `<tr><td>${go}</td><td class="num">${g.dias7}</td><td class="num">${g.interj}</td><td class="num">${g.he2}</td><td class="num">${t}</td></tr>`;
+  }).join('') || `<tr><td colspan="5" class="tag-semdados">Sem infrações no filtro atual.</td></tr>`;
+
+  const byGA = {};
+  recs.forEach(r => {
+    if (!byGA[r.ga]) byGA[r.ga] = {dias7:0,interj:0,he2:0};
+    byGA[r.ga].dias7 += r.dias7; byGA[r.ga].interj += r.interj; byGA[r.ga].he2 += r.he2;
+  });
+  const gaLabels = Object.keys(byGA).sort((a,b)=> (byGA[b].dias7+byGA[b].interj+byGA[b].he2) - (byGA[a].dias7+byGA[a].interj+byGA[a].he2));
+  document.querySelector('#reportTblGA tbody').innerHTML = gaLabels.map(ga => {
+    const g = byGA[ga]; const t = g.dias7+g.interj+g.he2;
+    return `<tr><td>${ga}</td><td class="num">${g.dias7}</td><td class="num">${g.interj}</td><td class="num">${g.he2}</td><td class="num">${t}</td></tr>`;
+  }).join('') || `<tr><td colspan="5" class="tag-semdados">Sem infrações no filtro atual.</td></tr>`;
+
+  const byNome = {};
+  recs.forEach(r => {
+    if (!byNome[r.nome]) byNome[r.nome] = {nome:r.nome, ga:r.ga, go:r.go, dias7:0, interj:0, he2:0};
+    const e = byNome[r.nome];
+    e.dias7 += r.dias7; e.interj += r.interj; e.he2 += r.he2;
+  });
+  const colabRows = Object.values(byNome)
+    .map(e => ({...e, total: e.dias7+e.interj+e.he2}))
+    .filter(e => e.total > 0)
+    .sort((a,b) => b.total - a.total);
+  document.querySelector('#reportTblColab tbody').innerHTML = colabRows.map(r =>
+    `<tr><td>${r.go||'-'}</td><td>${r.ga||'-'}</td><td>${r.nome}</td><td class="num">${r.dias7}</td><td class="num">${r.interj}</td><td class="num">${r.he2}</td><td class="num">${r.total}</td></tr>`
+  ).join('') || `<tr><td colspan="7" class="tag-semdados">Nenhum colaborador com infração no filtro atual.</td></tr>`;
+
+  return { cicloLabel, goLabel, goLabels, byGO, gaLabels, byGA, colabRows };
+}
+
+async function downloadPPT(){
+  const data = renderReport();
+  const cards = computeKpiCards();
+  const pptx = new PptxGenJS();
+  pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
+  pptx.layout = 'WIDE';
+
+  const bg = '1C1F26';
+  const fg = 'F0F1F3';
+  const muted = '98A0AC';
+  const accent = '0A84FF';
+  const headerRow = (cols) => cols.map(t => ({ text: t, options: { bold: true, color: 'FFFFFF', fill: { color: accent } } }));
+  const dataRow = (cols) => cols.map(t => ({ text: String(t), options: { color: fg } }));
+
+  let slide = pptx.addSlide();
+  slide.background = { color: bg };
+  slide.addText('Relatório de Infrações de Ponto', { x:0.6, y:2.4, w:12.1, h:1, fontSize:34, bold:true, color:fg });
+  slide.addText(data.cicloLabel, { x:0.6, y:3.4, w:12.1, h:0.6, fontSize:20, color:accent });
+  slide.addText(`GO: ${data.goLabel}  ·  Gerado em ${new Date().toLocaleString('pt-BR')}`, { x:0.6, y:4.05, w:12.1, h:0.5, fontSize:13, color:muted });
+
+  slide = pptx.addSlide();
+  slide.background = { color: bg };
+  slide.addText('Indicadores do ciclo', { x:0.6, y:0.4, w:12, h:0.6, fontSize:24, bold:true, color:fg });
+  cards.forEach((c, i) => {
+    const x = 0.6 + (i % 2) * 6.2;
+    const y = 1.3 + Math.floor(i / 2) * 2.0;
+    slide.addText(c.label.toUpperCase(), { x, y, w:5.8, h:0.4, fontSize:11, color:muted });
+    slide.addText(String(c.value), { x, y:y+0.4, w:5.8, h:0.8, fontSize:30, bold:true, color:fg });
+  });
+
+  slide = pptx.addSlide();
+  slide.background = { color: bg };
+  slide.addText('Infrações por GO', { x:0.6, y:0.4, w:12, h:0.6, fontSize:24, bold:true, color:fg });
+  const goTableRows = [headerRow(['GO','>7 dias trab.','Interjornada','>2h extras','Total'])];
+  data.goLabels.forEach(go => {
+    const g = data.byGO[go];
+    goTableRows.push(dataRow([go, g.dias7, g.interj, g.he2, g.dias7+g.interj+g.he2]));
+  });
+  slide.addTable(goTableRows, { x:0.6, y:1.2, w:12.1, fontSize:12, fill:{color:'26292F'}, border:{type:'solid', color:'3A3F4A', pt:0.5}, autoPage:false });
+
+  slide = pptx.addSlide();
+  slide.background = { color: bg };
+  slide.addText('Infrações por GA', { x:0.6, y:0.4, w:12, h:0.6, fontSize:24, bold:true, color:fg });
+  const gaTableRows = [headerRow(['GA','>7 dias trab.','Interjornada','>2h extras','Total'])];
+  data.gaLabels.forEach(ga => {
+    const g = data.byGA[ga];
+    gaTableRows.push(dataRow([ga, g.dias7, g.interj, g.he2, g.dias7+g.interj+g.he2]));
+  });
+  slide.addTable(gaTableRows, { x:0.6, y:1.2, w:12.1, fontSize:12, fill:{color:'26292F'}, border:{type:'solid', color:'3A3F4A', pt:0.5}, autoPage:false });
+
+  const perSlide = 16;
+  const totalColabSlides = Math.max(1, Math.ceil(data.colabRows.length / perSlide));
+  for (let i = 0; i < totalColabSlides; i++){
+    const chunk = data.colabRows.slice(i * perSlide, (i + 1) * perSlide);
+    slide = pptx.addSlide();
+    slide.background = { color: bg };
+    slide.addText(`Colaboradores com infrações (${i+1}/${totalColabSlides})`, { x:0.6, y:0.4, w:12, h:0.6, fontSize:22, bold:true, color:fg });
+    const rows = [headerRow(['GO','GA','Colaborador','>7 dias','Interj.','>2h extras','Total'])];
+    chunk.forEach(r => rows.push(dataRow([r.go||'-', r.ga||'-', r.nome, r.dias7, r.interj, r.he2, r.total])));
+    if (!chunk.length) rows.push(dataRow(['Nenhum colaborador com infração no filtro atual.','','','','','','']));
+    slide.addTable(rows, { x:0.4, y:1.15, w:12.5, fontSize:10.5, fill:{color:'26292F'}, border:{type:'solid', color:'3A3F4A', pt:0.5}, autoPage:false, colW:[2.0,2.0,3.2,1.05,1.05,1.15,0.85] });
+  }
+
+  const fileCiclo = (data.cicloLabel.match(/\d{2}\/\d{2}\/\d{4}/g) || []).map(d => d.replace(/\//g,'-')).join('_a_') || 'todos-ciclos';
+  await pptx.writeFile({ fileName: `relatorio-infracoes-${fileCiclo}.pptx` });
 }
 
 function renderIssues(){
@@ -1192,6 +1356,23 @@ function init(){
     document.getElementById('detailModalClose').addEventListener('click', closeDetailModal);
     document.getElementById('detailModalOverlay').addEventListener('click', (e) => {
       if (e.target.id === 'detailModalOverlay') closeDetailModal();
+    });
+    document.getElementById('goToReportBtn').addEventListener('click', () => {
+      document.getElementById('relatorioSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    document.getElementById('downloadPptBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('downloadPptBtn');
+      const original = btn.textContent;
+      btn.textContent = 'Gerando PPT…';
+      btn.disabled = true;
+      try {
+        await downloadPPT();
+      } catch (err){
+        setImportStatus('Erro ao gerar o PPT: ' + err.message, 'error');
+      } finally {
+        btn.textContent = original;
+        btn.disabled = false;
+      }
     });
     initialized = true;
   }
