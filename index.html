@@ -1171,7 +1171,7 @@ function renderGaBlocks(){
         <td class="num">${c.registros}</td>
         ${c.registros===0
           ? `<td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num tag-semdados">—</td><td class="num"><span class="badge neutral">sem dados</span></td>`
-          : `${numCell(c.dias7)}${numCell(c.interj)}${numCell(c.he2)}${numCell(c.total)}`}
+          : `${infraCell(c.nome,'dias7',c.dias7)}${infraCell(c.nome,'interj',c.interj)}${infraCell(c.nome,'he2',c.he2)}${infraCell(c.nome,'total',c.total)}`}
       </tr>`).join('');
     return `
       <div class="ga-block">
@@ -1988,7 +1988,9 @@ function init(){
         renderTable();
       });
     });
-    document.querySelector('#tblColab tbody').addEventListener('click', (e) => {
+    // Delegado no document: cobre tanto a tabela "Resumo por colaborador"
+    // quanto os blocos por GA (ambos renderizados dinamicamente).
+    document.addEventListener('click', (e) => {
       const link = e.target.closest('.infra-link');
       if (!link) return;
       e.preventDefault();
