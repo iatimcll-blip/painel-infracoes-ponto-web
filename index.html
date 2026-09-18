@@ -179,7 +179,16 @@
   .ranking-meta{font-size:.78rem;color:var(--muted)}
   .ranking-delta{font-weight:800;font-size:.9rem}
   .ranking-delta.good{color:var(--green)}
+  .ranking-peso{
+    margin-left:auto;font-size:.76rem;font-weight:700;color:var(--navy);
+    background:rgba(24,34,56,.07);border:1px solid var(--border);border-radius:999px;padding:2px 10px;
+  }
   .ranking-empty{color:var(--muted);font-size:.85rem;font-style:italic}
+  .criticidade-rule{
+    font-size:.8rem;color:var(--muted);background:var(--bg);border:1px solid var(--border);
+    border-radius:10px;padding:10px 14px;margin-bottom:16px;line-height:1.5;
+  }
+  .criticidade-rule b{color:var(--text)}
   .ranking-tipos{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0 34px}
   .tipo-tag{
     font-size:.74rem;font-weight:600;padding:3px 9px;border-radius:999px;
@@ -417,6 +426,10 @@
   <section>
     <h2>🏆 Ranking</h2>
     <div class="desc">GAs que reduziram infrações na semana atual vs. a anterior (respeita só o filtro de GO, igual ao bloco acima). Abaixo de cada um, quais tipos de infração caíram.</div>
+    <div class="criticidade-rule">
+      <b>Grau de criticidade (usado para ordenar o ranking, além do número de redução):</b>
+      &gt;7 dias trab. = peso 7 · Interjornada = peso 3,5 · &gt;2h extras = peso 3
+    </div>
     <h4>📉 GAs que reduziram (semana atual vs. anterior)</h4>
     <ol class="ranking-list" id="rankingReduziram"></ol>
   </section>
@@ -560,6 +573,10 @@ if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
 
 // Paleta única usada em toda a interface (KPIs, gráficos e relatório).
 const COLORS = { dias7:'#1476C9', interj:'#E0483F', he2:'#42C34B', navy:'#182238' };
+
+// Grau de criticidade de cada tipo de infração, usado pra ponderar o
+// ranking de GAs que reduziram (além do número bruto de redução).
+const CRITICIDADE = { dias7: 7, interj: 3.5, he2: 3 };
 
 // Painel é sempre em tema claro (modo escuro removido de propósito).
 function chartTickColor(){ return '#5B6472'; }
@@ -1277,12 +1294,16 @@ function renderRanking(){
     bucket.dias7 += r.dias7; bucket.interj += r.interj; bucket.he2 += r.he2;
   });
 
+  const pesoScore = (v) => v.dias7*CRITICIDADE.dias7 + v.interj*CRITICIDADE.interj + v.he2*CRITICIDADE.he2;
+  const fmtPeso = (n) => (n>0?'+':'') + n.toLocaleString('pt-BR', {maximumFractionDigits:1});
+
   const reduziram = Object.entries(byGaWeek).map(([ga,v]) => {
     const tAtual = v.atual.dias7+v.atual.interj+v.atual.he2;
     const tAnterior = v.anterior.dias7+v.anterior.interj+v.anterior.he2;
     const tiposReduzidos = Object.keys(TIPO_INFO).filter(t => v.atual[t] < v.anterior[t]);
-    return { ga, atual: v.atual, anterior: v.anterior, tAtual, tAnterior, delta: tAtual - tAnterior, tiposReduzidos };
-  }).filter(r => r.delta < 0).sort((a,b) => a.delta - b.delta);
+    const pesoAtual = pesoScore(v.atual), pesoAnterior = pesoScore(v.anterior);
+    return { ga, atual: v.atual, anterior: v.anterior, tAtual, tAnterior, delta: tAtual - tAnterior, tiposReduzidos, pesoDelta: pesoAtual - pesoAnterior };
+  }).filter(r => r.delta < 0).sort((a,b) => a.pesoDelta - b.pesoDelta);
 
   elRed.innerHTML = reduziram.length
     ? reduziram.map((r,i) => `
@@ -1290,8 +1311,9 @@ function renderRanking(){
         <div style="display:flex;align-items:center;gap:10px">
           <span class="ranking-medal">${medals[i]||'•'}</span>
           <span class="ranking-name">${r.ga}</span>
-          <span class="ranking-meta">${r.tAnterior} → ${r.tAtual}</span>
-          <span class="ranking-delta good">${r.delta}</span>
+          <span class="ranking-meta">${r.tAnterior} → ${r.tAtual} infrações</span>
+          <span class="ranking-delta good" title="Redução no número de infrações">${r.delta}</span>
+          <span class="ranking-peso" title="Redução ponderada pelo grau de criticidade">peso ${fmtPeso(r.pesoDelta)}</span>
         </div>
         <div class="ranking-tipos">
           ${r.tiposReduzidos.map(t => `<span class="tipo-tag" style="--tipo-color:${TIPO_INFO[t].color};--tipo-bg:${TIPO_INFO[t].bg};--tipo-border:${TIPO_INFO[t].border}">${TIPO_INFO[t].label}: ${r.anterior[t]} → ${r.atual[t]}</span>`).join('')}
